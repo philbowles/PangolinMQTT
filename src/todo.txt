@@ -1,0 +1,10 @@
+SOONEST:
+    keywors, libprops, docs etc
+    unfactor _rl
+    TLS
+    ESP32 test
+    async statics to PANGO
+SOON:
+MEDIUM:
+DREAMLAND:
+    LittleFS full QoS2 recovery (needs root n branch change to "Method b")
