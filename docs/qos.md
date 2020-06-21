@@ -1,3 +1,4 @@
+![plainhdr](../assets/pangoplain.jpg)
 # The challenges of MQTT on embedded systems
 
 ### ...and the different approaches taken by three open-source libraries

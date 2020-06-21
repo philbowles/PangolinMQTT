@@ -115,7 +115,24 @@ const char* cstringFromInt(int i){
   sprintf(buf,"%d",i);
   return buf;
 }
-
+void dumphex(uint8_t* mem, size_t len,uint8_t W=16) {
+    uint8_t* src = mem;
+    Serial.printf("Address: 0x%08X len: 0x%X (%d)", (ptrdiff_t)src, len, len);
+    for(uint32_t i = 0; i < len; i++) {
+        if(i % W == 0) Serial.printf("\n[0x%08X] 0x%08X: ", (ptrdiff_t)src, i);
+        Serial.printf("%02X ", *src);
+        src++;
+        //
+        if(i % W == W-1 || src==mem+len){
+            size_t ff=W-((src-mem) % W);
+            for(int p=0;p<(ff % W);p++) Serial.print("   ");
+            Serial.print("  "); // stretch this for nice alignment of final fragment
+            for(uint8_t* j=src-(W-(ff%W));j<src;j++) Serial.printf("%c", isprint(*j) ? *j:'.');
+        }
+    }
+    Serial.println();
+}
+/*
 void dumphex(const void *mem, uint32_t len, uint8_t cols=16) {
     const uint8_t* src = (const uint8_t*) mem;
     Serial.printf("Address: 0x%08X len: 0x%X (%d)", (ptrdiff_t)src, len, len);
@@ -126,11 +143,55 @@ void dumphex(const void *mem, uint32_t len, uint8_t cols=16) {
     }
     Serial.printf("\n");
 }
+*/
 // end utils
-
+#ifdef USE_PANGOLIN
+/*
+    Necessary error handling absent in asyncMqttClient
+*/
+void onMqttError(uint8_t e,uint32 info){
+  switch(e){
+    case SUBSCRIBE_FAIL:
+      Serial.printf("ERROR: SUBSCRIBE_FAIL info=%d\n",info);
+      break;
+    case INBOUND_QOS_FAIL:
+      Serial.printf("ERROR: INBOUND_QOS_FAIL id=%d\n",info);
+      break;
+    case INBOUND_QOS_ACK_FAIL:
+      Serial.printf("ERROR: OUTBOUND_QOS_ACK_FAIL id=%d\n",info);
+      break;
+    case OUTBOUND_QOS_FAIL:
+      Serial.printf("ERROR: OUTBOUND_QOS_FAIL id=%d\n",info);
+      break;
+    case OUTBOUND_QOS_ACK_FAIL:
+      Serial.printf("ERROR: OUTBOUND_QOS_ACK_FAIL id=%d\n",info);
+      break;
+    case INBOUND_PUB_TOO_BIG:
+      Serial.printf("ERROR: INBOUND_PUB_TOO_BIG size=%d Max=%d\n",e,mqttClient.getMaxPayloadSize());
+      break;
+    case OUTBOUND_PUB_TOO_BIG:
+      Serial.printf("ERROR: OUTBOUND_PUB_TOO_BIG size=%d Max=%d\n",e,mqttClient.getMaxPayloadSize());
+      break;
+    // The BOGUS_xxx messages are 99.99% unlikely to ever happen, but this message is better than a crash, non? 
+    case BOGUS_PACKET: //  Your server sent a control packet type unknown to MQTT 3.1.1 
+      Serial.printf("ERROR: BOGUS_PACKET TYPE=%02x\n",e,info);
+      break;
+    case BOGUS_ACK: // TCP sent an ACK for a packet that we don't remember sending!
+    // Only possible causes are: 1) Bug in this lib 2) Bug in ESPAsyncTCP lib 3) Bug in LwIP 4) Your noisy network 
+    // is SNAFU 5) Subscribing to an invalid name in onMqttConnect
+    // Either way, it's pretty fatal, so expect "interesting" results after THIS happens (it won't)
+      Serial.printf("ERROR: BOGUS_ACK TCP length=%\n",info);
+      break;
+    default:
+      Serial.printf("UNKNOWN ERROR: %u extra info %d",e,info);
+      break;
+  }
+}
+// end error-handling
+#endif
 
 void connectToWifi() {
-  WiFi.printDiag(Serial);
+//  WiFi.printDiag(Serial);
   Serial.printf("Connecting to Wi-Fi... SSID=%s\n",WIFI_SSID);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }
@@ -194,11 +255,12 @@ void setup() {
   // 
   //The following bog-standard C also fails
   //  char buf[6];
-  //  sprintf(buf,"%sDIED",pfx.c_str());
+  //  sprintf(buf,"%sDIED",prefix.c_str());
   //  mqttClient.setWill(buf,2,false,"As it very often does"); // different! setWill has a bug
   //
 #ifdef USE_PANGOLIN
   mqttClient.setWill((prefix + "DIED").c_str(),2,false,"It's 'Alpha': probably sill some bugs");
+  mqttClient.onError(onMqttError);
 #else
   //In fact the ONLY thing tht works is:
   //  ( and we know why :) )

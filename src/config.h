@@ -1,3 +1,5 @@
+#define PANGO_VERSION "0.0.7"
+
 //#define PANGO_DEBUG
 
 #ifdef PANGO_DEBUG

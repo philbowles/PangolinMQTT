@@ -1,14 +1,17 @@
-# The API "issues" (read "errors" and/or "misunderstandings") with AsyncMqttClient
+![plainhdr](../assets/pangoplain.jpg)
+# The API "issues" with AsyncMqttClient
 
-The pangolin API mirrors - as closely as possible - the existing API of `AsyncMqttClient` to enable users to migrate code quickly. However the `AsyncMqttClient` API has simple errors, redundant and flawed functions and numerous reasons why it falls well below the standard required of a good general-purpose library. For that reason some small changes have necessarily been made just to be able to compile *correctly* coded examples.
+The Pangolin API mirrors - as closely as possible - the existing API of `AsyncMqttClient` to enable users to migrate code quickly. However the `AsyncMqttClient` API has simple errors, redundant and flawed functions. For that reason some small changes have necessarily been made just to be able to compile *correctly* coded examples.
 
-It also omits some ncessary functionality which pangolin has added. New users must be warned: what you see at this version of Pangolin is not good, fully functional nor error-free, it exists as it is for a very specific purpose, and *will* change a fair degree at the next release to correct all those probelems
+It also omits some necessary functionality which Pangolin has added. New users must be warned: what you see at this version of Pangolin is not good, fully functional nor error-free, it exists as it is for a very specific purpose, and *will* change a fair degree at the next release to correct all the issues described here problems.
+
+The starting point then is to look first at the AsyncMqttClient API documentation
 
 ## Absolute essentials - do NOT skip this section!
 
 ### Necessary defintions / clarification
 
-Before going into greater detail, there is one fundamental concept that must be grasped. If `AsyncMqttClient` is your first meeting with MQTT, then you may be in for some shocks and be required to change the way you see MQTT. Many of the functions are simply *wrong* and *appear* to have been written with the misundertanding that MQTT payloads are "strings". They are not. The discussion of what is a "string" gets even experienced programmers heated: this is not "C programming for beginners". You should know this stuff already.
+Many of the functions are simply *wrong* and *appear* to have been written with the misundertanding that MQTT payloads are "strings". They are not. The discussion of what is a "string" gets even experienced programmers heated: this is not "C programming for beginners". You should know the difference between a `char*` and `byte*` or `uint8_t` already.
 
 ** MQTT payloads are NOT "strings" of any form or description and CANNOT be treated as such without serious problems and potential crashes **
 
@@ -18,7 +21,11 @@ Before going into greater detail, there is one fundamental concept that must be 
 
 The correct C/C++ datatype for such data is either `byte` or `uint8_t`. It is *NOT*, never has been and never will be `char`.
 
-Therefore, any reference to payload data that is *not* a `uint8_t` or a `uint8_t*` pointer to that data is also *WRONG*.
+Therefore, any reference to payload data that is *not* a `uint8_t` or a `uint8_t*` pointer to that data is also *WRONG*. The biggest problem in assuming tht "its the same as a `char*`" is that 99% of C string functions use `char*` for the simple fact they operate on C-strings and MQTT payloads ***are NOT strings***.
+
+Seeing a `char*` then can easliy seduce the programmer into thinking what it points to is a string as 99.9% of the times he has seen it before, it *does*. Thus "Oh, char* - must be a string then, I'll pass it to `strlen` or `strcpy` or `strXXXanything` else" - but if you do any of those things with an MQTT payload, your code will probably crash, because ***it is NOT a string***. 
+
+That fact alone should be enough to remind you to *always* address payload data with a `uint8_t*` - if it isn't, you are going to have problems.
 
 The [MQTT specification](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html) has little more to say on the payload than this:
 
@@ -46,7 +53,7 @@ Required to prevent attemps to send payload bigger than the lib can handle. `Asy
 
 * new onError callbacxk
 
-Provides much-needes handling of abnormal conditions simply ignored by `AsyncMqttClient`. The prototype is:
+Provides much-needed handling of abnormal conditions simply ignored by `AsyncMqttClient`. The prototype is:
 
 ```cpp
 void onError(uint8_t code,int info);
@@ -75,7 +82,7 @@ To resolve the issues outlined above, the `payload` parameter has already been c
 
 There is no reason why the `qos`, `dup` and `retain` values should be inside a struct, let alone one with a 33-character name of `AsyncMqttClientMessageProperties` The name has been shortened for now to PANGO_PROPS and will be removed completely at the next release with those inner fields having their own distinct existence
 
-`AsyncMqttClient` does not reassemble large inbound packets, it expects *you* to do all the hard work which is non-trivial.
+`AsyncMqttClient` does not reassemble large inbound packets, it expects *you* to do all the hard work which is non-trivial. It is also a major source of bugs and part of the reason QoS1 & 2 do not work properly on `AsyncMqttClient` . [Read more](bugs.md)
 
 Pangolin automatically ressembles any packet that will safely fit into memory and delivers you the whole packet *once* with the correct size. If it gets a "killer packet", it ignores all the fragments for you and then calls the new `onError` function to tell you the size of the bullet you just dodged.
 
@@ -87,21 +94,20 @@ void onMessage(const char* topic, uint8_t* payload, size_t length,uint8_t qos, b
 ```
 
 * onPublish, onSubscribe, unSubscribe callbacks
-*   
+
 Have no practical purpose or function. See the notes above on packet Ids.
-Their presence does little more than to knock another nail into the coffin of `AsyncMqttClient`'s credibility as a practcal working library.
 
 Obviously the functions that set these callbacks are now even *more* pointless. All 6 removed at next release withiout any loss of functionality to the library.
 
 * publish
 
-Perhaps equal first place with `subscribe` as the most use / important function in the API, so it's worrying that it contains a catalogue of errors, confusion and misinformation in a single function call.
+Perhaps equal first place with `subscribe` as the most use / important function in the API, so it's worrying that it contains errors and misinformation
 
 Firstly, there is the necessary change to the *correct* `uint8_t` type for the payload which will require a change to existing code.
 
 `qos`, `retain` and `dup`: Why are not the members of 33-character `struct` `AsyncMqttClientMessageProperties` required to be in one here? For the same reason already outlined above: Because there is no reason for them to be in one at all.
 
-Let's consider `dup`
+Now let's consider `dup`
 
 The [MQTT specification](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html) has this to say about `dup`:
 
@@ -111,25 +117,23 @@ The [MQTT specification](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.
 If the DUP flag is set to 0, it indicates that this is the first occasion that the Client or Server has attempted to send this MQTT PUBLISH Packet. If the DUP flag is set to 1, it indicates that this might be re-delivery of an earlier attempt to send the Packet. The DUP flag MUST be set to 1 by the Client or Server when it attempts to re-deliver a PUBLISH Packet [MQTT-3.3.1.-1]. The DUP flag MUST be set to 0 for all QoS 0 messages [MQTT-3.3.1-2].
 ```
 
-Is the user in control of any of that, or is it what he/she expects the library to be doing for hime/her? Ther's more:
+Is the user in control of any of that, or is it what he/she expects the library to be doing for hime/her?
 
 ```
 The DUP flag in the outgoing PUBLISH packet is set independently to the incoming PUBLISH packet, its value MUST be determined solely by whether the outgoing PUBLISH packet is a retransmission [MQTT-3.3.1-3].
 ```
 
-Note the use of "*solely*" - i.e only by something thing that can know when it is necessary: the library itself. Allowing the user to *set* it can only be described as simultaneously ignorant, irresponsible and potentially dangerous.
+Note the use of "*solely*" - i.e only by something thing that can know when it is necessary: the library itself. Allowing the user to *set* it can only be described as pointless and potentially dangerous.
 
-Not only is there *no* circumstance under which you should ever touch it, you *absolutely should not ever be allowed to*. If you even *think* of touching it, you will break QoS1. Once again you must balance its presence againt the credibiltiy of the library.
-
+Not only is there *no* circumstance under which you should ever touch it, you *absolutely should never be allowed to*. If you even *think* of touching it, you would break QoS1. If QoS1 worked, that is.
 
  New overloads to `publish` are added that make it easy to supply a payload of std::string or Arduino String without having to worry about calculating its length
 
 * `setWill` 
 
-Firstly it has a payload, so everything you have already learned about those also applies. It has already hd the incorrect `char*` changed to `uint8_t` so - again - your existing code may need to change.
+Firstly it has a payload, so everything you have already learned about those also applies. It has already hd the incorrect `char*` changed to `uint8_t*` so - again - your existing code may need to change.
 
-It also has a fatal bug. See the [showstopper]() example
-
+It also has a fatal bug. See [Bugs](bugs.md#setwill)
 
 * onDisconnect 
 
@@ -154,36 +158,29 @@ The positive, library generated disconnect reasons are taken from:
 
 ```
 
-Pangolin does not yet use 2,4,5 or 7 since TLS will not be included until the next release. It does not use 6 because I simply do not undertand its purpose in `AsyncMqttClient` and what function it *may* have had is already catered for by the new `onError` function or by having code that correctly handles both inbound and outbound packet reassembly.
-
-It also does not use 1, but then again, neither does `AsyncMqttClient` so it shouldn't have even been there in the first place.
-
-We are down to 0, 3 and 8. 8 is probably redundant as if the server goes away the usual response is a simple 0 as TCP spots the broken connection. If it happens at he exact point in the ping/response cycle you might get a 3 first. I have never seen an 8 yet, but it has been left in just in case something as yet unforseen *can* occur and will be removd when Pangolin is out of beta status, if it still remains elsuive. If *you* see one, plese tell me immediately.
-
-At last, 0 and 3 are the only values you will see from Pangolin, both when "oops the server went offline for some reason". I felt that a 30-character name that brought nothing to the party already was perhaps a tad too strong for humble `int8_t` so yes, you will have to chop out 24 useless chips of dead wood from any existing sketch.
-
 ## New utility functions in the PANGO:: namespace
 
-Firstly, note how none of the `AsyncMqttClient` examples ever show the contents of the payload. By now, you probably have some good ideas why not.
-
-`AsyncMqttClient` is totally lacking in any funtionality to unpack or otherwise handle an icoming payload, which we *now* know is always just a BLOB. Pangoline remedies this by providing a few nifty function that will save you a lot of time.
+`AsyncMqttClient` is totally lacking in any funtionality to unpack or otherwise handle an incoming payload, which we *now* know is always just a BLOB. Pangoline remedies this by providing a few nifty functions that will save you a lot of time.
 
 They all live in the `PANGO` namespace  which means to call them you need to write e.g. 
 ```cpp
 PANGO::dumphex(payload,length);
 ```
- Which will display something like this to allow you to see theexact contents of the BLOB.
+ Which will display something like this to allow you to see the exact contents of the BLOB.
 
- In the real world when you subscribe to a topic, you generally know what i the format of the data it contain. That alone however does not stop
+```
+dumphex exaaaaaample
+```
 
- * People like me loading up any old MQTT client app e.g. MQTT-spy and throwing a huge packet of random crap at you under the topic that *should* have your cat's heartbeat per minute in it as a c-style string of less than 4 digits. 
+ In the real world when you subscribe to a topic, you generally know what is the format of the data it contains. Usually that is because *you* have decided it! That fact alone however does not stop:
 
-* Badly written MQTT client libraries like - er... pick your favourtite :) - corrupting data in-flight that was valid when someone else sent it.
+ * People like me loading up any old MQTT client app e.g. MQTT-spy and throwing a huge packet of random junk at you under the topic that *should* have your cat's heartbeat per minute in it as a c-style string of less than 4 digits. 
 
+* Badly written MQTT client libraries can corrupt data in-flight that was valid when someone else sent it.
 
-The point i if *you* don't validate the packet, non-one else is going to. And if *you* don't validate it an simply assume it has in it what it *ought* to, well then your are designing in failure. **ALWAYS VALIDATE YOUR PACKETS!**
+The point is if *you* don't validate the packet, no-one else is going to. And if you *don't* validate it and simply assume it has in it what it *ought* to, well then you are designing-in failure. **ALWAYS VALIDATE YOUR PACKETS!**
 
-Panglin proves the following assistance in addition to the hex dumper already mentioned:
+Pangolin provides the following assistance in addition to the hex dumper already mentioned:
 
 ```cpp
 char*            payloadToCstring(uint8_t* data,size_t len);
@@ -193,13 +190,14 @@ String           payloadToString(uint8_t* data,size_t len);
 
 ```
 
-All of them are designed to be called with `PANGO::xxx(payload, length)` inside the `onMessage` callback, but will work anywhere in your code with any blob + known length. There are plenty of [examples](examples.md) in the  er... examples.
+All of them are designed to be called with `PANGO::xxx(payload, length)` inside the `onMessage` callback, but will work anywhere in your code with any blob + known length. There are plenty of examples in the  er... [examples](examples.md).
 
 `char* payloadToCstring(uint8_t* data,size_t len);`
 
-Returns a `char*` that you can pass to any C string function *only if the packet actually does in fact contain a valid NUL-terminated c-string*. If it *doesn't* then all hel wil break loose probably leading to an exception and a crash.
+Returns a `char*` that you can pass to any C string function *only if the packet actually does in fact contain a valid NUL-terminated c-string*. If it *doesn't* then all hell will break loose probably leading to an exception and a crash.
 
-In addition you *MUST* `free` the returned pointer before exiting you function or you will cause a memory leak. **You have been warned**
+In addition you *MUST* `free` the returned pointer before exiting your function or you will cause a memory leak. **You have been warned**
+
 Happily, none of the other functions require anything fancy like that.
 
 `int payloadToInt(uint8_t* data,size_t len);` 
@@ -212,9 +210,4 @@ Does what is says on he tin *if* valid c-string etc - you know the drill by now.
 
 `String payloadToString(uint8_t* data,size_t len);`
 
-Same as above but returns an Arduino String (capital "S") if you re daft enoiugh to want to use one.
-
-###### I think we are done here
-
-Now read [Examples](examples.md) to see all the bugs in TOLand how pangolin fixes or prevents them.
-
+Same as above but returns an Arduino String (capital "S") if you re daft enoiugh to want to use one.]

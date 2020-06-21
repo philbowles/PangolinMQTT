@@ -1,12 +1,12 @@
 /*
  * PLEASE READ THE NOTES ON THIS SKETCH FIRST AT
  * 
- * https://github.com/philbowles/pangolin/
+ * https://github.com/philbowles/Pangolin/
  * 
  * If you remove the following line, this sketch will compile 
  * using AsyncMqttClient to allow you to compare results / performance
  */
-#define USE_PANGOLIN
+//#define USE_PANGOLIN
 //
 //    Common to all sketches: necssary infrastructure
 //
@@ -182,8 +182,6 @@ void unifiedMqttDisconnect(int8_t reason) {
 }
 
 void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool dup, bool retain, size_t len, size_t index, size_t total) {
-//  Serial.printf("WTF? PL=%08X len=%d i=%d t=%d qos=%d\n",payload,len,index,total,qos);
-//  PANGO::dumphex(payload,len);
   if(topic=="qos"){
     uint8_t newqos=payloadToInt(payload,len); 
     if(newqos < 3) changeValues(newqos,ctrlRate,ctrlSize,ctrlBurst);
@@ -201,7 +199,7 @@ void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool d
   }
   else if(topic=="burst") {
     uint32_t newburst=payloadToInt(payload,len); 
-    if(newburst > 1) changeValues(ctrlQos, ctrlRate,ctrlSize,newburst);  // at least a string value of a massive integer + some safety
+    if(newburst > 0 && newburst < 20) changeValues(ctrlQos, ctrlRate,ctrlSize,newburst);  // limited by mosquitto in-flight Q size
     else Serial.printf("ERROR! Burst size %d is too small!!!\n",newburst);
   }
   else if(topic=="stop") {
@@ -214,6 +212,14 @@ void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool d
   }
   else if(topic=="show") { showValues(); }
   else { // default tof topic
+    // warn of fragment failure on A
+    if(len!=ctrlSize){
+      Serial.printf("FRAGMENT FAILURE! Only %d bytes received out of %d\n",len,ctrlSize);
+      Serial.printf("Cannot continue without adding packet reassembly code :(\n",len,ctrlSize);
+      dumphex(payload,len);
+      stopClock();
+      return;
+    }
     /*
     // verify payload integrity (Count no. of Xs)
     char buf[16];
@@ -229,7 +235,6 @@ void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool d
     }
     */
     //
-//    Serial.printf("Another pigeon home to roost %d\n",nInFlight);
     if(!(--nInFlight)){ // last one just came home
       uint32_t endTime=millis();
       char avg[16];
