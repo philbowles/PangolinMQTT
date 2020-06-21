@@ -63,9 +63,10 @@ void unifiedSubscribe(std::string topic,uint8_t qos){
   Serial.printf("unifiedSubscribe %s @ QoS%d\n",topic.c_str(),qos);
   mqttClient.subscribe(topic.c_str(),qos);
 }
+
 void unifiedPublish(std::string t,uint8_t q,bool r,uint8_t* p,size_t l){
 #ifdef USE_PANGOLIN
-  mqttClient.publish(t.c_str(),q,r,p,l); 
+  mqttClient.publish(t.c_str(),q,r,p,l,false); 
 #else
   mqttClient.publish(t.c_str(),q,r,(char*) p,l); 
 #endif
@@ -205,8 +206,7 @@ void setup() {
 #endif  
   
   mqttClient.setCleanSession(START_WITH_CLEAN_SESSION);
-//  mqttClient.setKeepAlive(RECONNECT_DELAY_M *3);
-  mqttClient.setKeepAlive(30);
+  mqttClient.setKeepAlive(RECONNECT_DELAY_M *3);
   
   connectToWifi();
 
