@@ -62,7 +62,7 @@ namespace PANGO {
 }
 
 void PANGO::_ackTCP(size_t len, uint32_t time){
-    PANGO_PRINT("TCP ACK LENGTH=%d\n",len);
+//    PANGO_PRINT("TCP ACK LENGTH=%d\n",len);
     size_t amtToAck=len;
     while(amtToAck){
         if(!TXQ.empty()){
@@ -184,7 +184,6 @@ void PANGO::dumphex(uint8_t* mem, size_t len,uint8_t W) {
 
 char* PANGO::payloadToCstring(uint8_t* data,size_t len){
     char* buf=static_cast<char*>(malloc(len+1)); /// CALLER MUST FREE THIS!!!
-    //memcpy(buf,data,len);
     while(*buf++=(char)(*data++));
     buf[len]='\0';
     return buf;

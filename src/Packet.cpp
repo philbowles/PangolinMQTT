@@ -57,12 +57,16 @@ void Packet::_clearPacketMap(){
             if(m.qos==1){
                 PANGO_PRINT("DUPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP ATTEMPT No. %d @ QOS1: resend %d as DUP\n",PANGO::_maxRetries - m.retries,m.id);
                 m.data[0]|=0x08; // set dup & resend
-               PANGO::_txPacket(m);
+                PANGO::_txPacket(m);
             }
             else  {
                 if(!m.pubrec) {
-                    PubrelPacket prp(m.id); // malformed packet!!
                     PANGO_PRINT("ATTEMPT No. %d @ QOS2: SEND %d PUBREL\n",PANGO::_maxRetries - m.retries,m.id);
+                    PubrelPacket prp(m.id);
+                }
+                else {
+                    PANGO_PRINT("QOS 2 id=%d ALREADY DELIVERED - lose it\n",m.id);
+                    Packet::ACKoutbound(m.id);
                 }
             }
         }
@@ -166,7 +170,6 @@ PublishPacket::PublishPacket(const char* topic, uint8_t qos, bool retain, uint8_
                 uint8_t* p2=_qos ? _poke16(p,_id):p;
                 memcpy(p2,payload,_length);
                 base->qos=_qos;
-                PANGO_PRINT("NEW PUBLISH PACKET %s ID=%d Q=%d R=%d D=%d L=%d G=%d\n",CSTR(_topic),_id,_qos,_retain,_dup,_length,_givenId);
                 mb pub(base->data,true); // make it a proper pub-populated msgblok
                 if(_givenId) _inbound[_id]=pub;
                 else if(_qos) _outbound[_id]=pub;

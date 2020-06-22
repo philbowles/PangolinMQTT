@@ -6,7 +6,7 @@
  * If you remove the following line, this sketch will compile 
  * using AsyncMqttClient to allow you to compare results / performance
  */
-//#define USE_PANGOLIN
+#define USE_PANGOLIN
 //
 //    Common to all sketches: necssary infrastructure
 //
@@ -19,7 +19,7 @@
 //  Some sketches will require you to set START_WITH_CLEAN_SESSION to false
 //  For THIS sketch, leave it at true
 //
-#define START_WITH_CLEAN_SESSION   true
+#define START_WITH_CLEAN_SESSION   false
 
 #include "options.h"
 //
@@ -47,12 +47,19 @@ extern std::string uTopic(std::string t); // automatically prefixes the topic wi
 //  Every 5 seconds send 10 QoS0 messages with payload size of 100bytes
 //  publish("Pavg0",50...   = (4500 - 4000) / 10
 //  
-//  Default/initial values:
+//  Default/initial values: FIX!!!
+#define QOS                  2
+#define PAYLOAD_SIZE       100
+#define BURST_SIZE           1
+#define TRANSMIT_RATE    10000
+#define HEARTBEAT           10
+/*
 #define QOS                  0
 #define PAYLOAD_SIZE       100
 #define BURST_SIZE           4
 #define TRANSMIT_RATE     5000
 #define HEARTBEAT           10
+*/
 // NB RATE IS IN MILLISECONDS!!!!
 //
 std::string tofTopic=uTopic("tof"); // the out-and-back message
@@ -182,6 +189,8 @@ void unifiedMqttDisconnect(int8_t reason) {
 }
 
 void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool dup, bool retain, size_t len, size_t index, size_t total) {
+  Serial.printf("UMM: %s %08X, Q=%d D=%d R=%d l=%d i=%d t=%t\n",topic.c_str(),payload,qos,dup,retain,len,index,total);
+  PANGO::dumphex(payload,len);
   if(topic=="qos"){
     uint8_t newqos=payloadToInt(payload,len); 
     if(newqos < 3) changeValues(newqos,ctrlRate,ctrlSize,ctrlBurst);
@@ -235,6 +244,10 @@ void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool d
     }
     */
     //
+    if(dup){
+      Serial.printf("I DON'T COUNT DUPS!\n");
+      return;
+    }
     if(!(--nInFlight)){ // last one just came home
       uint32_t endTime=millis();
       char avg[16];

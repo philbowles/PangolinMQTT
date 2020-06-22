@@ -22,7 +22,7 @@ class mb {
                 std::string     topic;
                 uint8_t*        payload;
                 uint32_t        plen;
-                bool            pubrec;
+                bool            pubrec=false;
 
 //        ~mb(){} // ABSOLUTELY DO NOT EVER NOT NEVER NOHOW FREE data HERE!!!!
 
