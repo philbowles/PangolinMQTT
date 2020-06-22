@@ -1,7 +1,6 @@
 #include <PangolinMQTT.h>
 #include <Packet.h>
-#include <unordered_set>
-#include <Ticker.h>
+//#include <unordered_set>
 #ifdef PANGO_DEBUG
     bool IACK=false;
     bool OACK=false;
@@ -373,6 +372,15 @@ void PangolinMQTT::debugHandler(uint8_t* payload,size_t length){
     sp[length]='\0';
     std::string pl(sp);
     if(pl=="dump"){ PANGO::dump(); }
+    else if(pl=="dirty"){ 
+        _onDisconnect(97);
+        // force dirty
+    }
+    else if(pl=="clean"){
+        _onDisconnect(97);
+        // force dirty
+
+    }
     else if(pl=="disco"){ _onDisconnect(99); }
     else if(pl=="reboot"){ ESP.restart(); }
     else if(pl=="fix"){ 
