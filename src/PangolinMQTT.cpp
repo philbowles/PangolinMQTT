@@ -3,8 +3,8 @@
 #include <unordered_set>
 #include <Ticker.h>
 #ifdef PANGO_DEBUG
-    bool BIP=false;
-    bool BOP=false;
+    bool IACK=false;
+    bool OACK=false;
     bool IREC=false;
     bool IREL=false;
     bool ICOM=false;
@@ -101,7 +101,7 @@ void PangolinMQTT::_handlePublish(mb m){
         case 1:
             {
 #ifdef PANGO_DEBUG
-            if(BOP) PANGO_PRINT("BROKEN OUTBOUND PUBACK FOR QOS1 SESSION RECOVERY TESTING\n");
+            if(OACK) PANGO_PRINT("BROKEN OUTBOUND PUBACK FOR QOS1 SESSION RECOVERY TESTING\n");
             else {
 #endif
                 PubackPacket pap(m.id);
@@ -156,7 +156,7 @@ void PangolinMQTT::_handlePacket(mb m){
             break;
         case PUBACK:
 #ifdef PANGO_DEBUG
-            if(BIP) PANGO_PRINT("BROKEN INBOUND PUBACK FOR QOS1 SESSION RECOVERY TESTING\n");
+            if(IACK) PANGO_PRINT("BROKEN INBOUND PUBACK FOR QOS1 SESSION RECOVERY TESTING\n");
             else {
 #endif
             Packet::ACKoutbound(id);
@@ -265,7 +265,6 @@ uint8_t* PangolinMQTT::_packetReassembler(mb m){
             }
             else {
                 me=m.len;
-//                PANGO::_rxPacket(tmp);
                 _handlePacket(tmp);
             }
         } else {
@@ -329,7 +328,8 @@ void PangolinMQTT::connect() {
 
 void PangolinMQTT::disconnect(bool force) {
     if (!PANGO::TCP) return;
-    PANGO::TCP->close(force);
+//    PANGO::TCP->close(force);
+    PANGO_PRINT("USER DCX\n");
     DisconnectPacket dp{};
 }
 
@@ -376,9 +376,8 @@ void PangolinMQTT::debugHandler(uint8_t* payload,size_t length){
     else if(pl=="disco"){ _onDisconnect(99); }
     else if(pl=="reboot"){ ESP.restart(); }
     else if(pl=="fix"){ 
-        BIP=false;
-        BOP=false;
-        BIP=false;
+        IACK=false;
+        OACK=false;
         IREC=false;
         IREL=false;
         ICOM=false;
@@ -387,8 +386,8 @@ void PangolinMQTT::debugHandler(uint8_t* payload,size_t length){
         OCOM=false;
         Serial.printf("\n\nFIX\n\n");
     }
-    else if(pl=="BIP"){ BIP=true; Serial.printf("\n\nB I P\n\n"); }
-    else if(pl=="BOP"){ BOP=true; Serial.printf("\n\nB O P\n\n"); }
+    else if(pl=="IACK"){ IACK=true; Serial.printf("\n\nIACK\n\n"); }
+    else if(pl=="OACK"){ OACK=true; Serial.printf("\n\nOACK\n\n"); }
     else if(pl=="IREC"){ IREC=true; Serial.printf("\n\nIREC\n\n"); }
     else if(pl=="IREL"){ IREL=true; Serial.printf("\n\nIREL\n\n"); }
     else if(pl=="ICOM"){ ICOM=true; Serial.printf("\n\nICOM\n\n"); }

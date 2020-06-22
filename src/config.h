@@ -1,6 +1,6 @@
 #define PANGO_VERSION "0.0.7"
 
-//#define PANGO_DEBUG
+#define PANGO_DEBUG
 
 #ifdef PANGO_DEBUG
     #define PANGO_PRINT(...) Serial.printf(__VA_ARGS__)
