@@ -173,6 +173,8 @@ PublishPacket::PublishPacket(const char* topic, uint8_t qos, bool retain, uint8_
                 mb pub(base->data,true); // make it a proper pub-populated msgblok
                 if(_givenId) _inbound[_id]=pub;
                 else if(_qos) _outbound[_id]=pub;
+//                PANGO::TCP->setNoDelay(_qos<2);
+//                PANGO_PRINT("SANITY: Q=%d ND=%d\n",_qos,PANGO::TCP->getNoDelay());
             };
             _build(_givenId);
         } else PANGO::LIN->_notify(OUTBOUND_PUB_TOO_BIG,length);

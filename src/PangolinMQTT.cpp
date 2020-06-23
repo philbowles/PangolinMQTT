@@ -270,9 +270,14 @@ uint8_t* PangolinMQTT::_packetReassembler(mb m){
                     running+=f.len;
                 }
                 PANGO::_clearFragments();
-                memcpy(bpp+expecting-m.len,m.data,m.len);
+                uint32_t charlie=expecting-received;
+                PANGO_PRINT("TAIL END CHARLIE IS %d E=%d R=%d\n",charlie,expecting,received);
+                memcpy(bpp+expecting-charlie,m.data,charlie);
                 _handlePacket(mb(bpp,true)); // frees bpp
-                if(expecting-received<m.len) me=expecting-received;
+                if(charlie<m.len) {
+                    PANGO_PRINT("E-R < m.len RETURN ME=%d\n",charlie);
+                    me=charlie;
+                } else PANGO_PRINT("DEFAULT ME=%d\n",me);
             } 
             else {
                 PANGO_PRINT("DODGED A BULLET!\n");
@@ -283,6 +288,7 @@ uint8_t* PangolinMQTT::_packetReassembler(mb m){
     }
     else {
         mb tmp(m.data,false);
+        PANGO_PRINT("NON-REBUILD %08X len=%d\n",tmp.data,tmp.len);
         if(tmp.len<getMaxPayloadSize()){
             if(tmp.len > m.len){
                 expecting=tmp.len;
@@ -292,7 +298,7 @@ uint8_t* PangolinMQTT::_packetReassembler(mb m){
                 midFrag=true;
             }
             else {
-                me=m.len;
+                me=tmp.len;
                 _handlePacket(tmp);
             }
         } else {
