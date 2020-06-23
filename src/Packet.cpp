@@ -120,7 +120,7 @@ void Packet::_shortGarbage(){
     uint8_t* p=static_cast<uint8_t*>(malloc(2));
     p[0]=_controlcode;
     p[1]=_controlcode=0;
-   PANGO::_txPacket(mb(p,true)); // flip this and deffault to true , remove param
+    PANGO::_txPacket(mb(p,true));
 }
 
 ConnectPacket::ConnectPacket(): Packet(CONNECT,10){
@@ -166,15 +166,13 @@ PublishPacket::PublishPacket(const char* topic, uint8_t qos, bool retain, uint8_
                 }
                 _controlcode|=flags;
             };
-            _end=[this,payload](uint8_t* p,mb* base){ // remove inbound/outbound to build + retrun qos
+            _end=[this,payload](uint8_t* p,mb* base){ 
                 uint8_t* p2=_qos ? _poke16(p,_id):p;
                 memcpy(p2,payload,_length);
                 base->qos=_qos;
                 mb pub(base->data,true); // make it a proper pub-populated msgblok
                 if(_givenId) _inbound[_id]=pub;
                 else if(_qos) _outbound[_id]=pub;
-//                PANGO::TCP->setNoDelay(_qos<2);
-//                PANGO_PRINT("SANITY: Q=%d ND=%d\n",_qos,PANGO::TCP->getNoDelay());
             };
             _build(_givenId);
         } else PANGO::LIN->_notify(OUTBOUND_PUB_TOO_BIG,length);
