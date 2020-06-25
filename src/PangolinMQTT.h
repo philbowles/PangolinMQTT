@@ -192,7 +192,7 @@ class PangolinMQTT {
                 uint16_t            publish(const char* topic, uint8_t qos, bool retain, uint8_t* payload, size_t length, bool dup); // <- stupid!!!
                 void                publish(const char* topic, uint8_t qos, bool retain, std::string payload){ publish(topic,qos,retain, (uint8_t*) payload.data(), (size_t) payload.size(),false); }
                 void                publish(const char* topic, uint8_t qos, bool retain, String payload){ publish(topic,qos,retain, (uint8_t*) payload.c_str(), (size_t) payload.length(),false); }
-                void                setCleanSession(bool cleanSession){ _cleanSession = cleanSession; }
+                void                setCleanSession(bool cleanSession){ _cleanSession = cleanSession; if(cleanSession) _cleanStart(); }
                 void                setClientId(const char* clientId){ _clientId = clientId; }
                 void                setCredentials(const char* username, const char* password = nullptr);
                 void                setKeepAlive(uint16_t keepAlive){ _keepalive = PANGO_POLL_RATE * keepAlive; }

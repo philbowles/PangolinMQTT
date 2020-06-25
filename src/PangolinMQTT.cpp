@@ -112,7 +112,7 @@ void PangolinMQTT::_handlePublish(mb m){
             break;
         case 2:
         //  MQTT Spec. "method A"
-            if(m.dup) PANGO_PRINT("RECOVERY RECORD id=%d\n",m.id);
+            if(m.dup) PANGO_PRINT("QOS2 SESSION RECOVERY id=%d\n",m.id);
             {
 //
 #ifdef PANGO_DEBUG
@@ -138,14 +138,14 @@ void PangolinMQTT::_handlePacket(mb m){
         case CONNACK:
             if(i[1]) _onDisconnect(i[1]);
             else {
+                PANGO::dump();
                 PANGO::_space=PANGO::TCP->space();
                 bool session=i[0] & 0x01;
-                PANGO_PRINT("\nSESSION IS %s\n",session ? "DIRTY":"CLEAN");
-                if(!session) _cleanStart();
-                else {
-                    PANGO::dump();
-                    Packet::_clearPacketMap();
-                }
+                Serial.printf("\nSESSION IS %s\n",session ? "DIRTY":"CLEAN");
+                Packet::_clearPacketMap();
+//                if(!session) _cleanStart();
+//                else {
+//                }
                 PANGO_PRINT("CONNECTED FH=%u SH=%u\n",ESP.getFreeHeap(),getMaxPayloadSize());
 #ifdef PANGO_DEBUG
 //              our own topic for debugging
@@ -204,7 +204,10 @@ void PangolinMQTT::_handlePacket(mb m){
                 if(Packet::_inbound.count(id)) {
                     _hpDespatch(Packet::_inbound[id]);
                     Packet::_ACK(&Packet::_inbound,id,true); // true = inbound
-                } else PANGO_PRINT("RECOMP OF ALREADY DELIVERED id=%d?\n",id);
+                } else {
+//                    PANGO_PRINT("RECOMP OF ALREADY DELIVERED id=%d?\n",id);
+                    PANGO::LIN->_notify(INBOUND_QOS_ACK_FAIL,id);
+                }
 //
 #ifdef PANGO_DEBUG
             if(OCOM) { PANGO_PRINT("BROKEN OUTBOUND PUBCOMP FOR QOS2 SESSION RECOVERY TESTING\n"); OCOM=false; }
@@ -256,31 +259,31 @@ uint8_t* PangolinMQTT::_packetReassembler(mb m){
         if(expecting-received>m.len){
             if(!discard) PANGO::_saveFragment(m);
             received+=m.len;
-            PANGO_PRINT("MIDFRAG: expecting %d received %d remaining=%d\n",expecting,received,expecting-received);
+//            PANGO_PRINT("MIDFRAG: expecting %d received %d remaining=%d\n",expecting,received,expecting-received);
         }
         else {
             midFrag=false;
             if(!discard){
                 uint8_t* bpp=static_cast<uint8_t*>(malloc(expecting)); // NOT a leak!!
-                PANGO_PRINT("REBUILD %08X len=%d\n",bpp,expecting);
+//                PANGO_PRINT("REBUILD %08X len=%d\n",bpp,expecting);
                 size_t running=0;
                 for(auto const& f:PANGO::_fragments){
-                    PANGO_PRINT("ASSEMBLE from %08X len=%d frag=%d running=%d\n",(void*) f.data,f.len,f.frag,running);
+//                    PANGO_PRINT("ASSEMBLE from %08X len=%d frag=%d running=%d\n",(void*) f.data,f.len,f.frag,running);
                     memcpy(bpp+running,f.data,f.len);
                     running+=f.len;
                 }
                 PANGO::_clearFragments();
                 uint32_t charlie=expecting-received;
-                PANGO_PRINT("TAIL END CHARLIE IS %d E=%d R=%d\n",charlie,expecting,received);
+//                PANGO_PRINT("TAIL END CHARLIE IS %d E=%d R=%d\n",charlie,expecting,received);
                 memcpy(bpp+expecting-charlie,m.data,charlie);
                 _handlePacket(mb(bpp,true)); // frees bpp
                 if(charlie<m.len) {
-                    PANGO_PRINT("E-R < m.len RETURN ME=%d\n",charlie);
+//                    PANGO_PRINT("E-R < m.len RETURN ME=%d\n",charlie);
                     me=charlie;
-                } else PANGO_PRINT("DEFAULT ME=%d\n",me);
+                } //else PANGO_PRINT("DEFAULT ME=%d\n",me);
             } 
             else {
-                PANGO_PRINT("DODGED A BULLET!\n");
+//                PANGO_PRINT("DODGED A BULLET!\n");
                 _notify(INBOUND_PUB_TOO_BIG,expecting);
                 discard=false;
             }
@@ -288,12 +291,12 @@ uint8_t* PangolinMQTT::_packetReassembler(mb m){
     }
     else {
         mb tmp(m.data,false);
-        PANGO_PRINT("NON-REBUILD %08X len=%d\n",tmp.data,tmp.len);
+//        PANGO_PRINT("NON-REBUILD %08X len=%d\n",tmp.data,tmp.len);
         if(tmp.len<getMaxPayloadSize()){
             if(tmp.len > m.len){
                 expecting=tmp.len;
                 received=m.len;
-                PANGO_PRINT("START ASSEMBLY: expecting %d received %d remaining=%d\n",expecting,received,expecting-received);
+//                PANGO_PRINT("START ASSEMBLY: expecting %d received %d remaining=%d\n",expecting,received,expecting-received);
                 PANGO::_saveFragment(m);
                 midFrag=true;
             }
@@ -346,13 +349,9 @@ void PangolinMQTT::_onPoll(AsyncClient* client) {
 void PangolinMQTT::connect() {
     if (PANGO::TCP) return;
     PANGO_PRINT("CONNECT FH=%u\n",ESP.getFreeHeap());
-//    PANGO_PRINT("**************************** CS=%d\n",PangolinMQTT::_cleanSession);
     PANGO::TCP=new AsyncClient;
-    PANGO::TCP->setNoDelay(true);
-    PANGO::TCP->onConnect([this](void* obj, AsyncClient* c) { 
-//        PANGO_PRINT("OC SMITH************************* CS=%d\n",PangolinMQTT::_cleanSession);
-        ConnectPacket cp{};
-    }); // *NOT* A MEMORY LEAK! :)
+    PANGO::TCP->setNoDelay(false);
+    PANGO::TCP->onConnect([this](void* obj, AsyncClient* c) { ConnectPacket cp{}; }); // *NOT* A MEMORY LEAK! :)
     PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { PANGO_PRINT("TCP CHOPPED US!\n"); _onDisconnect(TCP_DISCONNECTED); });
     PANGO::TCP->onError([this](void* obj, AsyncClient* c,int error) { PANGO_PRINT("TCP_ERROR %d\n",error); _onDisconnect(error); });
     PANGO::TCP->onAck([this](void* obj, AsyncClient* c,size_t len, uint32_t time){ PANGO::_ackTCP(len,time); }); 

@@ -82,10 +82,10 @@ void PANGO::_ackTCP(size_t len, uint32_t time){
 }
 
 void PANGO::_clearFragments(){
-    PANGO_PRINT("CLEAR %d FRAGMENTS\n",PANGO::_fragments.size());
+//    PANGO_PRINT("CLEAR %d FRAGMENTS\n",PANGO::_fragments.size());
     for(auto & f:PANGO::_fragments) {
         f.clear();
-        PANGO_PRINT("CLEAR FRAG from %08X len=%d frag=%d FH=%u\n",(void*) f.data,f.len,f.frag,ESP.getFreeHeap());
+//        PANGO_PRINT("CLEAR FRAG from %08X len=%d frag=%d FH=%u\n",(void*) f.data,f.len,f.frag,ESP.getFreeHeap());
     }
     _fragments.clear();
     _fragments.shrink_to_fit();
@@ -119,7 +119,7 @@ void PANGO::_release(mb m){
         do{
             size_t toSend=std::min(_space,bytesLeft);
             ESP.wdtFeed(); // makes all the difference! First time EVER I have needed it
-            PANGO_PRINT("OUTBOUND CHUNK len=%d space=%d BL=%d\n",toSend,_space,bytesLeft);
+//            PANGO_PRINT("OUTBOUND CHUNK len=%d space=%d BL=%d\n",toSend,_space,bytesLeft);
             TXQ.push(mb(toSend,m.data+(m.len - bytesLeft),m.id,(--nFrags) ? (ADFP) nFrags:m.data,true)); // very naughty, but works :)
             bytesLeft-=toSend;
         } while(bytesLeft);
@@ -142,7 +142,7 @@ void ICACHE_RAM_ATTR PANGO::_runRXQ(){
 void PANGO::_saveFragment(mb m){
     uint8_t* frag=static_cast<uint8_t*>(malloc(m.len));
     memcpy(frag,m.data,m.len);
-    PANGO_PRINT("SAVE FRAGMENT (%d) from %08X -> %08X\n",m.len,m.data,frag); // copy Q
+//    PANGO_PRINT("SAVE FRAGMENT (%d) from %08X -> %08X\n",m.len,m.data,frag); // copy Q
     _fragments.push_back(mb(m.len,frag,0,(ADFP) _fragments.size(),true));
 }
 

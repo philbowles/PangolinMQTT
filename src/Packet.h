@@ -43,7 +43,7 @@ class Packet {
 
         Packet(uint8_t controlcode,uint8_t adj=0,bool hasid=false): _controlcode(controlcode),_hdrAdjust(adj),_hasId(hasid){}
 
-        static  void             ACKoutbound(uint16_t id){ PANGO_PRINT("ACK O/B %d\n",id); _ACK(&_outbound,id,false); }
+        static  void             ACKoutbound(uint16_t id){ /*PANGO_PRINT("ACK O/B %d\n",id);*/ _ACK(&_outbound,id,false); }
 };
 class ConnectPacket: public Packet {
             uint8_t  protocol[8]={0x0,0x4,'M','Q','T','T',4,0}; // 3.1.1
@@ -60,19 +60,19 @@ class DisconnectPacket: public Packet {
 };
 class PubackPacket: public Packet {
     public:
-        PubackPacket(uint16_t id): Packet(PUBACK) { PANGO_PRINT("OUT PUBACK FOR ID %d\n",id); _idGarbage(id); }
+        PubackPacket(uint16_t id): Packet(PUBACK) { /*PANGO_PRINT("OUT PUBACK FOR ID %d\n",id);*/ _idGarbage(id); }
 };
 class PubrecPacket: public Packet {
     public:
-        PubrecPacket(uint16_t id): Packet(PUBREC) { PANGO_PRINT("OUT PUBREC FOR ID %d\n",id); _idGarbage(id); }
+        PubrecPacket(uint16_t id): Packet(PUBREC) { /*PANGO_PRINT("OUT PUBREC FOR ID %d\n",id);*/ _idGarbage(id); }
 };
 class PubrelPacket: public Packet {
     public:
-        PubrelPacket(uint16_t id): Packet(PUBREL) { PANGO_PRINT("OUT PUBREL FOR ID %d\n",id); _idGarbage(id); }
+        PubrelPacket(uint16_t id): Packet(PUBREL) { /*PANGO_PRINT("OUT PUBREL FOR ID %d\n",id);*/ _idGarbage(id); }
 };
 class PubcompPacket: public Packet {
     public:
-        PubcompPacket(uint16_t id): Packet(PUBCOMP) { PANGO_PRINT("OUT PUBCOMP FOR ID %d\n",id); _idGarbage(id); }  
+        PubcompPacket(uint16_t id): Packet(PUBCOMP) { /*PANGO_PRINT("OUT PUBCOMP FOR ID %d\n",id);*/ _idGarbage(id); }  
 };
 class SubscribePacket: public Packet {
         std::string          _topic;
