@@ -11,7 +11,7 @@
   
 ## Background
 
-The original intention was to provide a range of examples to allow the user to compare the two libraries in terms of capability, stability and peformance. So for example there was originally a sketch clled TimeOfFlight which sent and received repeated messages, timing how long it took each to make the round-trip between client and server so that the user could compare peformance.
+The original intention was to provide a range of examples to allow the user to compare the two libraries in terms of capability, stability and peformance. So for example there was originally a sketch called TimeOfFlight which sent and received repeated messages, timing how long it took each to make the round-trip between client and server so that the user could compare peformance.
 
 Each sketch was to have an "A_" and a "P_" version so that they could be run side by side to make any such comparisons simple and obvious.
 One such test would, for example show Pangolin performing between 10 and 15 times faster than AsyncMqttClient, using identical user code:
