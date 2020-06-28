@@ -74,6 +74,8 @@ This list is not exhaustive, there are many more, these are just some of the wor
 12. [Numerous API errors](api.md) - sufficient for their own document[PP]
 13. [QoS 1/2 protocol violation - no message resend](#qos-12-protocol-violation---no-message-resend)[PP]
 14. [QoS 1/2 protocol violation - no session recovery](#qos-12-protocol-violation---no-session-recovery)[PP]
+15. [QoS 1 protocol violation - breach of delivery promise](#qos1-promise-breached-after-reconnect)[PP]
+16. [QoS 2 protocol violation - breach of delivery promise](#qos2-promise-breached-after-reconnect)[PP]
 
 ## Other potential bugs
 
@@ -183,3 +185,39 @@ TOL makes no attempt whatsover to conform with MQTT-4.4.0-1 and resend failed Qo
 ![pv3](../assets/pv3mqtt.jpg)
 
 The code above also does not check the returned session state, therefore it cannot possible react / behave differently when session recovery is required and is a protocol violation of MQTT-3.1.2-6
+
+
+# QoS1 promise breached after reconnect
+
+The following log while running [Session Recovery 1 example](../examples/SessionRecovery1/SessionRecovery1.ino) shows that following a reboot, AsyncMqttClient "loses" a record and fails to deliver it, breaching the QoS1 promise.
+
+[Session Recovery 1 example](../examples/SessionRecovery1/SessionRecovery1.ino) deliberately disconnects randomly 5% of the time after a send. Tests after 10 such forced reconnects show that while Pangolin has zero "missing" records...
+
+![sr1p](../assets/sr1p.jpg)
+
+...AsyncMqttClient loses a record on every disconnection / reconnection:
+
+![sr1a](../assets/sr1a.jpg)
+
+
+# QoS2 promise breached after reconnect
+
+The following log while running [Session Recovery 2 example](../examples/SessionRecovery2/SessionRecovery2.ino) shows that following a reboot, what is possibly a "stale" failed message 211 from the previous session has been mistaken for the reply from the most recently sent message 9.
+
+ANY failed transaction from before the reboot should have been discarded as it cannot validly be replayed since its "state" was lost in the reboot. By treating it as a normal record rather than a replay of a failed earlier message, any code relying on messages being received in strict sequence will break. In this instance it causes a breach of the promise on message 9 to be delivered.
+
+![sr2a2](../assets/sr2a2.jpg)
+
+However, there may be some other more subtle bug at work since while 202 could be another "stale" record from the previous session, 95 is so far removed from 211 that it is unlikely to be. It appears that AsyncMqttClient may simply be corrupting the incoming data. Either way, it renders QoS2 unusable.
+
+![sr2a3](../assets/sr2a3.jpg)
+
+![sr2a4](../assets/sr2a4.jpg)
+
+[Session Recovery 2 example](../examples/SessionRecovery2/SessionRecovery2.ino) deliberately disconnects randomly 5% of the time after a send. Tests after 10 such forced reconnects show that while Pangolin has zero "missing" records:
+
+![sr2p](../assets/sr2p.jpg)
+
+AsyncMqttClient has failed to deliver 12 messages under the same conditions, caused by a variety of bugs
+
+![sr2p](../assets/sr2a.jpg)

@@ -175,6 +175,19 @@ They all live in the `PANGO` namespace  which means to call them you need to wri
 PANGO::dumphex(payload,length);
 ```
 
+Which will show something like this:
+
+```
+22:08:58.506 -> Address: 0x3FFF07AF len: 0x64 (100)
+22:08:58.506 -> [0x3FFF07AF] 0x00000000: 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58   XXXXXXXXXXXXXXXX
+22:08:58.506 -> [0x3FFF07BF] 0x00000010: 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58   XXXXXXXXXXXXXXXX
+22:08:58.506 -> [0x3FFF07CF] 0x00000020: 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58   XXXXXXXXXXXXXXXX
+22:08:58.539 -> [0x3FFF07DF] 0x00000030: 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58   XXXXXXXXXXXXXXXX
+22:08:58.539 -> [0x3FFF07EF] 0x00000040: 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58   XXXXXXXXXXXXXXXX
+22:08:58.539 -> [0x3FFF07FF] 0x00000050: 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58   XXXXXXXXXXXXXXXX
+22:08:58.539 -> [0x3FFF080F] 0x00000060: 58 58 58 58                                       XXXX
+```
+
  In the real world when you subscribe to a topic, you generally know what is the format of the data it contains. Usually that is because *you* have decided it! That fact alone however does not stop:
 
  * People like me loading up any old MQTT client app e.g. MQTT-spy and throwing a huge packet of random junk at you under the topic that *should* have your cat's heartbeat per minute in it as a c-style string of less than 4 digits. 

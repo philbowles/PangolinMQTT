@@ -142,7 +142,7 @@ void PangolinMQTT::_handlePacket(mb m){
                 PANGO::_space=PANGO::TCP->space();
                 bool session=i[0] & 0x01;
                 Serial.printf("\nSESSION IS %s\n",session ? "DIRTY":"CLEAN");
-                Packet::_clearPacketMap();
+                Packet::_resendPartialTxns();
 //                if(!session) _cleanStart();
 //                else {
 //                }
@@ -323,7 +323,9 @@ void PangolinMQTT::_onData(uint8_t* data, size_t len) {
     PANGO::_resetPingTimers();
     do {
         p=_packetReassembler(mb(data+len-p,p));
+#ifdef ARDUINO_ARCH_ESP8266
         ESP.wdtFeed(); // move to fragment handler?
+#endif
     } while (p < data + len);
 }
 
@@ -338,7 +340,7 @@ void PangolinMQTT::_onPoll(AsyncClient* client) {
         }
         else {
             if(PANGO::_nPollTicks > _keepalive){
-                Packet::_clearPacketMap();
+                Packet::_resendPartialTxns();
                 //bool noPing=PANGO::TXQ.size() || PANGO::RXQ.size();
                 if(!(PANGO::TXQ.size() || PANGO::RXQ.size())) PingPacket pp{}; 
             }

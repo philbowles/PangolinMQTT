@@ -28,7 +28,7 @@ class Packet {
         static  void             _ACK(PANGO_PACKET_MAP* m,uint16_t id,bool inout); // inout true=INBOUND false=OUTBOUND
                 uint8_t*         _block(size_t size);
                 void	         _build(bool hold=false);
-        static  void             _clearPacketMap();
+        static  void             _resendPartialTxns();
                 void             _idGarbage(uint16_t id);
                 void             _initId();
                 uint8_t*         _mem(const void* v,size_t size);

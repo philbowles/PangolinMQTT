@@ -49,33 +49,43 @@ void Packet::_build(bool hold){
     if(!hold) PANGO::_txPacket(mb (m.data,true));
 }
 
-void Packet::_clearPacketMap(){
+void Packet::_resendPartialTxns(){
     std::vector<uint16_t> morituri;
     for(auto const& o:_outbound){
         auto m=o.second;
         if(--(m.retries)){
+            if(m.pubrec){
+                PANGO_PRINT("WE ARE PUBREC'D ATTEMPT @ QOS2: SEND %d PUBREL\n",m.id);
+                PubrelPacket prp(m.id);
+            }
+            else {
+                m.data[0]|=0x08; // set dup & resend
+                PANGO::_txPacket(m);
+            }
+            /*
             if(m.qos==1){
-                PANGO_PRINT("DUPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP ATTEMPT No. %d @ QOS1: resend %d as DUP\n",PANGO::_maxRetries - m.retries,m.id);
+                PANGO_PRINT("DUPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP ATTEMPT QOS1: resend %d as DUP\n",m.id);
                 m.data[0]|=0x08; // set dup & resend
                 PANGO::_txPacket(m);
             }
             else  {
-                if(!m.pubrec) {
-                    PANGO_PRINT("ATTEMPT No. %d @ QOS2: SEND %d PUBREL\n",PANGO::_maxRetries - m.retries,m.id);
-                    PubrelPacket prp(m.id);
+                if(m.pubrec) {
                 }
                 else {
-                    PANGO_PRINT("QOS 2 id=%d ALREADY DELIVERED - lose it\n",m.id);
-                    Packet::ACKoutbound(m.id);
+                    PANGO_PRINT("QOS 2 id=%d NOT PUBREC'D - RESEND \n",m.id);
+//                    Packet::ACKoutbound(m.id);
+                    m.data[0]|=0x08; // set dup & resend
+                    PANGO::_txPacket(m);
                 }
             }
+            */
         }
         else {
             PANGO_PRINT("NO JOY AFTER %d ATTEMPTS: QOS FAIL\n",PANGO::_maxRetries);
             morituri.push_back(m.id); // all hope exhausted TODO: reconnect?
         }
     }
-    for(auto const& i:morituri) ACKoutbound(i);
+   for(auto const& i:morituri) ACKoutbound(i);
 }
 
 void Packet::_idGarbage(uint16_t id){

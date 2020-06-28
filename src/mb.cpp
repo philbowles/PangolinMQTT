@@ -1,4 +1,4 @@
-#include<mb.h>
+#include"mb.h"
 
 PANG_MEM_POOL       mb::pool;
 
@@ -78,7 +78,7 @@ void mb::manage(){
 #ifdef PANGO_DEBUG
 void mb::dump(){
     if(data){
-        PANGO_PRINT("MB %08X TYPE %02X L=%d M=%d O=%d I=%d Q=%d F=%08X R=%d\n",data,data[0],len,managed,offset,id,qos,frag,retries);
+        PANGO_PRINT("MB %08X TYPE %02X L=%d M=%d O=%d I=%d Q=%d F=%08X\n",data,data[0],len,managed,offset,id,qos,frag);
         PANGO::dumphex(data,len);
     } else PANGO_PRINT("MB %08X ZL or bare: can't dump\n",data);
 }

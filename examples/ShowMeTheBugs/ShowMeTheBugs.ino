@@ -40,7 +40,7 @@ extern std::string uTopic(std::string t); // automatically prefixes the topic wi
 //  Once all BURST_SIZE messages have returned, take T1
 //
 //  T1-T0 is "flight time" of all BURST_SIZE messages
-//  publish simple average per message of T1-T0 / BURST_SIZE to topic [A|P]avg<qos>
+//  publish simple average per message of PT1-T0 / BURST_SIZE to topic [A|P]avg<qos>
 //
 //  Example with default values using Pangolin: given imaginary T0 and T1 of 4000 and 4500 millis()
 //
@@ -53,13 +53,7 @@ extern std::string uTopic(std::string t); // automatically prefixes the topic wi
 #define BURST_SIZE           1
 #define TRANSMIT_RATE    10000
 #define HEARTBEAT           10
-/*
-#define QOS                  0
-#define PAYLOAD_SIZE       100
-#define BURST_SIZE           4
-#define TRANSMIT_RATE     5000
-#define HEARTBEAT           10
-*/
+
 // NB RATE IS IN MILLISECONDS!!!!
 //
 std::string tofTopic=uTopic("tof"); // the out-and-back message
@@ -158,12 +152,12 @@ void changeValues(uint8_t newQos,uint32_t newRate,uint32_t newSize,uint32_t newB
 }
 
 void startClock(){
-  if(!bursting) T2.attach_ms(ctrlRate,sendBurst);
+  if(!bursting) PT2.attach_ms(ctrlRate,sendBurst);
   else Serial.printf("Clock Already running!\n");
   bursting=true;
 }
 void stopClock(){
-  if(bursting) T2.detach();
+  if(bursting) PT2.detach();
   else Serial.printf("Clock Already stopped!\n");
   bursting=false;
 }
@@ -189,8 +183,6 @@ void unifiedMqttDisconnect(int8_t reason) {
 }
 
 void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool dup, bool retain, size_t len, size_t index, size_t total) {
-  Serial.printf("UMM: %s %08X, Q=%d D=%d R=%d l=%d i=%d t=%t\n",topic.c_str(),payload,qos,dup,retain,len,index,total);
-  PANGO::dumphex(payload,len);
   if(topic=="qos"){
     uint8_t newqos=payloadToInt(payload,len); 
     if(newqos < 3) changeValues(newqos,ctrlRate,ctrlSize,ctrlBurst);
@@ -229,20 +221,6 @@ void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool d
       stopClock();
       return;
     }
-    /*
-    // verify payload integrity (Count no. of Xs)
-    char buf[16];
-    strcpy(buf,(char*) payload);
-    size_t numXs=len - (strlen(buf)+1);
-    //Serial.printf("INTEGRITY: PL=%d raw tof is %s, lenTof is %d: should be %d 'X's\n",len,buf,strlen(buf),numXs);
-    uint8_t* pstart=payload+strlen(buf)+1;
-    for(uint8_t* c=pstart;c<pstart + numXs;c++){
-      if(*c!='X'){
-        Serial.printf("Corrupted payload! Found '%c' (0x%02X) at offset %d\n",*c,*c,c - pstart);
-        break;
-      }
-    }
-    */
     //
     if(dup){
       Serial.printf("I DON'T COUNT DUPS!\n");
@@ -262,5 +240,5 @@ void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool d
 // set qos topic names and start HB ticker
 void unifiedSetup(){
     addQosToTopic(ctrlQos);
-    T1.attach(HEARTBEAT,[]{ Serial.printf("T=%u Heartbeat: Heap=%u number of reconnects=%d\n",millis(), ESP.getFreeHeap(),nRCX); });
+    PT1.attach(HEARTBEAT,[]{ Serial.printf("T=%u Heartbeat: Heap=%u number of reconnects=%d\n",millis(), ESP.getFreeHeap(),nRCX); });
 }

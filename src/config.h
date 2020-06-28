@@ -12,9 +12,7 @@
 // per second - depend on LwIP implementation, may need to change as keepalive is scaled from this value
 // e.g 15 seconds = 30 poll "ticks"
 
-#define PANGO_SEND_TIMER     100
-
-#define PANGO_MAX_RETRIES    3
+#define PANGO_MAX_RETRIES    2
 
 // safety margin to measure biggest payload size
 #define PANGO_HEAP_SAFETY    2048

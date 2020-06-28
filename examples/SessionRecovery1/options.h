@@ -1,4 +1,8 @@
+#ifdef ARDUINO_ARCH_ESP32
+#include <WiFi.h>
+#else
 #include <ESP8266WiFi.h>
+#endif
 #include <Ticker.h>
 /*
  * This file "irons out" the differences between Pangolin API and AsncMqttClient API
@@ -49,10 +53,38 @@ uint32_t  nRCX=0;
 std::string lib(LIBRARY);
 std::string prefix(lib.begin(),++lib.begin());
 
-Ticker mqttReconnectTimer,wifiReconnectTimer,T1,T2,T3;
+Ticker mqttReconnectTimer,wifiReconnectTimer,PT1,PPT2,PT3;
+void connectToMqtt() {
+  Serial.println("Connecting to MQTT...");
+  mqttClient.connect();
+}
+void connectToWifi() {
+//  WiFi.printDiag(Serial);
+  Serial.printf("Connecting to Wi-Fi... SSID=%s\n",WIFI_SSID);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+}
 
+#ifdef ARDUINO_ARCH_ESP32
+void WiFiEvent(WiFiEvent_t event) {
+    Serial.printf("[WiFi-event] event: %d\n", event);
+    switch(event) {
+    case SYSTEM_EVENT_STA_GOT_IP:
+        Serial.println("WiFi connected");
+        Serial.println("IP address: ");
+        Serial.println(WiFi.localIP());
+        connectToMqtt();
+        break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+        Serial.println("WiFi lost connection");
+        mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
+        wifiReconnectTimer.once(RECONNECT_DELAY_W, connectToWifi);
+        break;
+    }
+}
+#else
 WiFiEventHandler wifiConnectHandler;
 WiFiEventHandler wifiDisconnectHandler;
+#endif
 
 extern void unifiedSetup();
 extern void unifiedMqttConnect();
@@ -132,24 +164,12 @@ void dumphex(uint8_t* mem, size_t len,uint8_t W=16) {
     }
     Serial.println();
 }
-/*
-void dumphex(const void *mem, uint32_t len, uint8_t cols=16) {
-    const uint8_t* src = (const uint8_t*) mem;
-    Serial.printf("Address: 0x%08X len: 0x%X (%d)", (ptrdiff_t)src, len, len);
-    for(uint32_t i = 0; i < len; i++) {
-        if(i % cols == 0) Serial.printf("\n[0x%08X] 0x%08X: ", (ptrdiff_t)src, i);
-        Serial.printf("%02X ", *src);
-        src++;
-    }
-    Serial.printf("\n");
-}
-*/
 // end utils
 #ifdef USE_PANGOLIN
 /*
     Necessary error handling absent in asyncMqttClient
 */
-void onMqttError(uint8_t e,uint32 info){
+void onMqttError(uint8_t e,uint32_t info){
   switch(e){
     case SUBSCRIBE_FAIL:
       Serial.printf("ERROR: SUBSCRIBE_FAIL info=%d\n",info);
@@ -190,27 +210,17 @@ void onMqttError(uint8_t e,uint32 info){
 // end error-handling
 #endif
 
-void connectToWifi() {
-//  WiFi.printDiag(Serial);
-  Serial.printf("Connecting to Wi-Fi... SSID=%s\n",WIFI_SSID);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-}
-
-void connectToMqtt() {
-  Serial.println("Connecting to MQTT...");
-  mqttClient.connect();
-}
-
+#ifdef ARDUINO_ARCH_ESP8266
 void onWifiConnect(const WiFiEventStationModeGotIP& event) {
   Serial.println("Connected to Wi-Fi.");
   connectToMqtt();
 }
-
 void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
   Serial.printf("Disconnected from Wi-Fi event=%d",event.reason);
   mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
   wifiReconnectTimer.once(RECONNECT_DELAY_W, connectToWifi);
 }
+#endif
 
 #ifdef USE_PANGOLIN
 void onMqttDisconnect(int8_t reason) {
@@ -218,7 +228,6 @@ void onMqttDisconnect(int8_t reason) {
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
 #endif
   Serial.printf("Disconnected from MQTT reason=%d\n",reason);
-  T2.detach();
   if (WiFi.isConnected()) {
     mqttReconnectTimer.once(RECONNECT_DELAY_M, connectToMqtt);
   }
@@ -241,9 +250,13 @@ void setup() {
 
   WiFi.disconnect();
   WiFi.mode(WIFI_STA);
-
+  
+#ifdef ARDUINO_ARCH_ESP32
+  WiFi.onEvent(WiFiEvent);
+#else
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
   wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
+#endif
 
   mqttClient.onConnect(onMqttConnect);
   mqttClient.onDisconnect(onMqttDisconnect);

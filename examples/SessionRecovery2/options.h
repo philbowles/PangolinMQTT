@@ -53,7 +53,7 @@ uint32_t  nRCX=0;
 std::string lib(LIBRARY);
 std::string prefix(lib.begin(),++lib.begin());
 
-Ticker mqttReconnectTimer,wifiReconnectTimer,PT1,PT2,PT3;
+Ticker mqttReconnectTimer,wifiReconnectTimer,PT1,PPT2,PT3;
 void connectToMqtt() {
   Serial.println("Connecting to MQTT...");
   mqttClient.connect();

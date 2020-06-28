@@ -45,7 +45,7 @@ extern std::string uTopic(std::string t); // automatically prefixes the topic wi
 //
 //  
 //  Default/initial values: FIX!!!
-#define QOS                 2
+#define QOS                 1
 #define PAYLOAD_SIZE      100
 #define TRANSMIT_RATE    1000
 #define HEARTBEAT           7
@@ -70,12 +70,12 @@ void sendNextInSequence(){
 }
 
 void startClock(){
-  if(!bursting) T2.attach_ms(TRANSMIT_RATE,sendNextInSequence);
+  if(!bursting) PPT2.attach_ms(TRANSMIT_RATE,sendNextInSequence);
   else Serial.printf("Clock Already running!\n");
   bursting=true;
 }
 void stopClock(){
-  if(bursting) T2.detach();
+  if(bursting) PPT2.detach();
   else Serial.printf("Clock Already stopped!\n");
   bursting=false;
 }
@@ -94,20 +94,16 @@ void unifiedMqttDisconnect(int8_t reason) {
 void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool dup, bool retain, size_t len, size_t index, size_t total) {
     uint32_t R=payloadToInt(payload,len);
     if(!sentThisSession){
-      Serial.printf("***** QoS2 recovery in action! *****\n");
+      Serial.printf("***** QoS1 recovery in action! *****\n");
       Serial.printf("We have not yet sent any messages, but %d just came in!\n",R);
     }
     Serial.printf("RCVD %u\n",R);
+    if(dup) Serial.printf("QOS1 DUPLICATE VALUE RECEIVED / %d\n",R);
     sent.erase(R);
-    if(dup) {
-        Serial.printf("QOS2 FAIL!!! DUPLICATE VALUE RECEIVED %d\n",R);
-        stopClock();
-        T1.detach();
-    }
 }
 // set qos topic names and start HB ticker
 void unifiedSetup(){
-    T1.attach(HEARTBEAT,[]{
+    PT1.attach(HEARTBEAT,[]{
         Serial.printf("Heartbeat: Heap=%u seq=%d number of reconnects=%d\n",ESP.getFreeHeap(),sequence,nRCX);
         Serial.printf("No. Incomplete send/rcv pairs=%d\n",sent.size());
         if(sent.size()){

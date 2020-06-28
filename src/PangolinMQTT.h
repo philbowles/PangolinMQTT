@@ -64,7 +64,7 @@ struct PANGO_PROPS {
   bool retain;
 };
 
-#include<PANGO.h> // common namespace
+#include"PANGO.h" // common namespace
 //  "Pangolin" has what some (uninformed) folk might call "unorthodox" memory management. 
 //  It contains a lot of code that LOOKS like it will leak memory. For those uninformed folk, 
 //  (including the authors of other so-called MQTT libraries): "standard" techniques simply don't work 
@@ -120,7 +120,7 @@ using PANGO_FN_U8PTRU8     = std::function<uint8_t*(uint8_t*)>;
 using PANGO_BLOCK_Q        = std::queue<PANGO_BLOCK>;
 using PANGO_PROPS_t        = struct PANGO_PROPS;
 
-#include<mb.h>
+#include"mb.h"
 
 using PANGO_PACKET_MAP      =std::map<uint16_t,mb>; // indexed by messageId
 using PANGO_cbConnect       =std::function<void(bool)>;

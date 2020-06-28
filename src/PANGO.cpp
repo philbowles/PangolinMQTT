@@ -114,7 +114,9 @@ void PANGO::_release(mb m){
         size_t bytesLeft=m.len;
         do{
             size_t toSend=std::min(_space,bytesLeft);
-            ESP.wdtFeed(); // makes all the difference! First time EVER I have needed it
+#ifdef ARDUINO_ARCH_ESP8266
+            ESP.wdtFeed(); // move to fragment handler?
+#endif
 //            PANGO_PRINT("OUTBOUND CHUNK len=%d space=%d BL=%d\n",toSend,_space,bytesLeft);
             TXQ.push(mb(toSend,m.data+(m.len - bytesLeft),m.id,(--nFrags) ? (ADFP) nFrags:m.data,true)); // very naughty, but works :)
             bytesLeft-=toSend;
