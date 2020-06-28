@@ -3,7 +3,7 @@
 
 The Pangolin API mirrors - as closely as possible - the existing API of `AsyncMqttClient` to enable users to migrate code quickly. However the `AsyncMqttClient` API has simple errors, redundant and flawed functions. For that reason some small changes have necessarily been made just to be able to compile *correctly* coded examples.
 
-It also omits some necessary functionality which Pangolin has added. New users must be warned: what you see at this version of Pangolin is not good, fully functional nor error-free, it exists as it is for a very specific purpose, and *will* change a fair degree at the next release to correct all the issues described here problems.
+It also omits some necessary functionality which Pangolin has added. New users must be warned: what you see at this version of Pangolin is not good, fully functional nor error-free, it exists as it is for a very specific purpose, and *will* change a fair degree at the next release to correct all the problems described here.
 
 The starting point then is to look first at the AsyncMqttClient API documentation
 
@@ -13,17 +13,17 @@ The starting point then is to look first at the AsyncMqttClient API documentatio
 
 Many of the functions are simply *wrong* and *appear* to have been written with the misundertanding that MQTT payloads are "strings". They are not. The discussion of what is a "string" gets even experienced programmers heated: this is not "C programming for beginners". You should know the difference between a `char*` and `byte*` or `uint8_t` already.
 
-** MQTT payloads are NOT "strings" of any form or description and CANNOT be treated as such without serious problems and potential crashes **
+***MQTT payloads are NOT "strings" of any form or description and CANNOT be treated as such without serious problems and potential crashes***
 
 ### MQTT payloads
 
-**ALL** MQTT payloads are length-described blocks of arbitrary bytes aka "BLOB" (*B*inary *L*arge *OB*jects). They don't have to be large - mostly they contain only a few charactaers of temperature or some other sensor reading etc, but the term is a good one because it describes *ALL* payloads including the tiny ones.
+**ALL** MQTT payloads are length-described blocks of arbitrary bytes aka "BLOB" (*B*inary *L*arge *OB*jects). They don't have to be large - mostly they contain only a few characters of temperature or some other sensor reading etc, but the term is a good one because it describes *ALL* payloads including the tiny ones.
 
 The correct C/C++ datatype for such data is either `byte` or `uint8_t`. It is *NOT*, never has been and never will be `char`.
 
-Therefore, any reference to payload data that is *not* a `uint8_t` or a `uint8_t*` pointer to that data is also *WRONG*. The biggest problem in assuming tht "its the same as a `char*`" is that 99% of C string functions use `char*` for the simple fact they operate on C-strings and MQTT payloads ***are NOT strings***.
+Therefore, any reference to payload data that is *not* a `uint8_t` or a `uint8_t*` pointer to that data is also *WRONG*. The biggest problem in assuming tht "its the same as a `char*`" is that 99% of C string functions use `char*` for the simple fact they operate on C strings and MQTT payloads ***are NOT C strings***.
 
-Seeing a `char*` then can easliy seduce the programmer into thinking what it points to is a string as 99.9% of the times he has seen it before, it *does*. Thus "Oh, char* - must be a string then, I'll pass it to `strlen` or `strcpy` or `strXXXanything` else" - but if you do any of those things with an MQTT payload, your code will probably crash, because ***it is NOT a string***. 
+Seeing a `char*` then can easliy seduce the programmer into thinking what it points to is a string as 99.9% of the times he has seen it before, it *does*. Thus "Oh, char* - must be a string then, I'll pass it to `strlen` or `strcpy` or `strXXXanything` else" - but if you do any of those things with an MQTT payload, your code will probably crash, because ***it is NOT a C string***. 
 
 That fact alone should be enough to remind you to *always* address payload data with a `uint8_t*` - if it isn't, you are going to have problems.
 
@@ -61,6 +61,7 @@ void onError(uint8_t code,int info);
 ```
 
 Where code is one of the following:
+
 ```cpp
 enum PANGO_FAILURE : uint8_t {
     SUBSCRIBE_FAIL,
@@ -94,6 +95,10 @@ The next version is likely to look like:
 void onMessage(const char* topic, uint8_t* payload, size_t length,uint8_t qos, bool dup, bool retain);
 ```
 
+* onMqttConnect
+
+Passing the sessionPresent flag is redundant, since there is nothing the user can/should do differently no matter its value. It *should be* (but is not, see [List of Bugs](bugs.md) ) used inetrnally by the library to manage session recovery: it has no other use and will be removed at next release.
+
 * onPublish, onSubscribe, unSubscribe callbacks
 
 Have no practical purpose or function. See the notes above on packet Ids.
@@ -111,6 +116,7 @@ Firstly, there is the necessary change to the *correct* `uint8_t` type for the p
 Now let's consider `dup`
 
 The [MQTT specification](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html) has this to say about `dup`:
+
 
 ```
 3.3.1.1 DUP

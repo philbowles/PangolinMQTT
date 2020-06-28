@@ -11,7 +11,7 @@
   
 ## Background
 
-The original intention was to provide a range of examples to allow the user to compare the two libraries in terms of capability, stability and peformance. So for example there was originally a sketch called TimeOfFlight which sent and received repeated messages, timing how long it took each to make the round-trip between client and server so that the user could compare peformance.
+The original intention was to provide a range of examples to allow the user to compare PangolinMQTT and AsyncMqttClient in terms of capability, stability and peformance. There was originally a sketch called TimeOfFlight which sent and received repeated messages, timing how long it took each to make the round-trip between client and server so that the user could compare peformance.
 
 Each sketch was to have an "A_" and a "P_" version so that they could be run side by side to make any such comparisons simple and obvious.
 One such test would, for example show Pangolin performing between 10 and 15 times faster than AsyncMqttClient, using identical user code:
@@ -71,8 +71,8 @@ This list is not exhaustive, there are many more, these are just some of the wor
 9. ["Killer Packet" inbound](#killer-packet-inbound) [MF3][PP]
 10. [QoS1 Protocol Violation](#qos1-protocol-violation) [MF2][MF3]
 11. [Fragment Failure](#fragment-failure) [MF3]
-12. [Numerous API errors](api.md) - sufficient for their own document
-13. [QoS 1/2 protocol violation - no message resend][PP](#qos-12-protocol-violation---no-message-resend)[PP]
+12. [Numerous API errors](api.md) - sufficient for their own document[PP]
+13. [QoS 1/2 protocol violation - no message resend](#qos-12-protocol-violation---no-message-resend)[PP]
 14. [QoS 1/2 protocol violation - no session recovery](#qos-12-protocol-violation---no-session-recovery)[PP]
 
 ## Other potential bugs
