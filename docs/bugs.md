@@ -91,6 +91,7 @@ When combining any permutation of them due to a happenstance of timing, the worl
 The inescapable conclusion is that AsyncMqttClient is simply ***not fit for purpose*** and should be avoided at all costs since it simply ***does not work***
 
 ---
+
 # Evidence
 
 ## setWill
