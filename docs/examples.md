@@ -16,7 +16,7 @@ The ["A_" version](../examples/QuickStart_A/QuickStart_A.ino) compiles with Asyn
 
 Comparing the two side by side should give a quick idea of the changes you need to make to any exisiting code base you may have in order to move your app from AsyncMqttClient to Pangolin
 
-In-depth details of the API changes and the resons for each can be see in the [API](api.md) documentation itself.
+In-depth details of the API changes and the reasons for each can be see in the [API](api.md) documentation itself.
 
 ---
 
