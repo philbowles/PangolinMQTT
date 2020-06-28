@@ -12,7 +12,7 @@
 
 ## Quick Start
 
-The ["A_" version](../examples/QuickStart_A/QuickStart_A.ino) compiles wiht AsyncMqttClient, the ["P_" version](../examples/QuickStart_P/QuickStart_P.ino) uses Pangolin. The two are as close as possible in code, afetr allowing for minor [API](api.md) differences.
+The ["A_" version](../examples/QuickStart_A/QuickStart_A.ino) compiles with AsyncMqttClient, the ["P_" version](../examples/QuickStart_P/QuickStart_P.ino) uses Pangolin. The two are as close as possible in code, afetr allowing for minor [API](api.md) differences.
 
 Comparing the two side by side should give a quick idea of the changes you need to make to any exisiting code base you may have in order to move your app from AsyncMqttClient to Pangolin
 

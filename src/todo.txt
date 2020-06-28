@@ -1,11 +1,11 @@
 SOONEST:
     change blox to mb 
-    keywors, libprops, docs etc
+    keywords, libprops, docs etc
     unfactor _rl
-    TLS
     ESP32 test
     async statics to PANGO
 SOON:
-MEDIUM:
+    TLS
+MEDIUM-TERM:
 DREAMLAND:
-    LittleFS full QoS2 recovery (needs root n branch change to "Method b")
+    LittleFS FULL QoS2 recovery (needs root n branch change to "Method b")
