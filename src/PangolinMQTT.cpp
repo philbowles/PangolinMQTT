@@ -339,8 +339,8 @@ void PangolinMQTT::_onPoll(AsyncClient* client) {
         else {
             if(PANGO::_nPollTicks > _keepalive){
                 Packet::_clearPacketMap();
-                bool noPing=PANGO::TXQ.size();
-                if(!noPing) PingPacket pp{}; 
+                //bool noPing=PANGO::TXQ.size() || PANGO::RXQ.size();
+                if(!(PANGO::TXQ.size() || PANGO::RXQ.size())) PingPacket pp{}; 
             }
         }
     }
@@ -350,7 +350,7 @@ void PangolinMQTT::connect() {
     if (PANGO::TCP) return;
     PANGO_PRINT("CONNECT FH=%u\n",ESP.getFreeHeap());
     PANGO::TCP=new AsyncClient;
-    PANGO::TCP->setNoDelay(false);
+    PANGO::TCP->setNoDelay(true);
     PANGO::TCP->onConnect([this](void* obj, AsyncClient* c) { ConnectPacket cp{}; }); // *NOT* A MEMORY LEAK! :)
     PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { PANGO_PRINT("TCP CHOPPED US!\n"); _onDisconnect(TCP_DISCONNECTED); });
     PANGO::TCP->onError([this](void* obj, AsyncClient* c,int error) { PANGO_PRINT("TCP_ERROR %d\n",error); _onDisconnect(error); });

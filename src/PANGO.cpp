@@ -150,7 +150,7 @@ void PANGO::_send(mb m){
     PANGO_PRINT("----> SEND %s %d bytes on wire\n",PANGO::getPktName(m.data[0]),m.len);
     TCP->add((const char*) m.data,m.len); // ESPAsyncTCP is WRONG on this, it should be a uint8_t*
     TCP->send();
-    _nPollTicks=0;
+    _resetPingTimers();
 }
 
 void ICACHE_RAM_ATTR PANGO::_rxPacket(mb m){
