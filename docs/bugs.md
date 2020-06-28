@@ -6,7 +6,7 @@
 * [Background](#background)
 * [Show Me The Bugs](#show-me-the-bugs)
     * [Three major flaws causing the numerous bugs in in AsyncMqttClient](#three-major-flaws-cause-multiple-different-bugs)
-    * [List of 14 selected fatal bugs in AsyncMqttClient](#the-main-menu)
+    * [List of selected fatal bugs in AsyncMqttClient](#the-main-menu)
 * [Evidence](#evidence)
   
 ## Background
