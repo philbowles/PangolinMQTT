@@ -29,6 +29,7 @@ That fact alone should be enough to remind you to *always* address payload data 
 
 The [MQTT specification](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html) has little more to say on the payload than this:
 
+
 ```
 3.3.3 Payload 
 The Payload contains the Application Message that is being published. The content and format of the data is application specific
@@ -162,14 +163,10 @@ The positive, library generated disconnect reasons are taken from:
 
 `AsyncMqttClient` is totally lacking in any funtionality to unpack or otherwise handle an incoming payload, which we *now* know is always just a BLOB. Pangoline remedies this by providing a few nifty functions that will save you a lot of time.
 
-They all live in the `PANGO` namespace  which means to call them you need to write e.g. 
+They all live in the `PANGO` namespace  which means to call them you need to write e.g.
+
 ```cpp
 PANGO::dumphex(payload,length);
-```
- Which will display something like this to allow you to see the exact contents of the BLOB.
-
-```
-dumphex exaaaaaample
 ```
 
  In the real world when you subscribe to a topic, you generally know what is the format of the data it contains. Usually that is because *you* have decided it! That fact alone however does not stop:

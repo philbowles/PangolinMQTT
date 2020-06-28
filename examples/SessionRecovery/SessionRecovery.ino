@@ -1,11 +1,4 @@
-/*
- **********************************************************************
- *                                                                    *
- * THIS SKETCH INTENTIONALLY DISCONNECTS AT FREQUENT RANDOM INTERVALS *
- *                     TO TEST SESSION RECOVERY                       *                  
- *                                                                    *
- **********************************************************************                     
- *                     
+/*                                 
  *  QoS2 guarantees to deliver meesages EXACTLY ONCE so if QoS2      
  *  works, we will get back every message we sent, 1:1 any gaps in the
  *  gaps in the sequence mean that QoS2 is broken.
@@ -24,7 +17,6 @@
  */
 #define USE_PANGOLIN
 #include<set>
-#include<vector>
 //
 //    Common to all sketches: necssary infrastructure
 //
@@ -55,7 +47,7 @@ extern std::string uTopic(std::string t); // automatically prefixes the topic wi
 //  Default/initial values: FIX!!!
 #define QOS                 2
 #define PAYLOAD_SIZE      100
-#define TRANSMIT_RATE     1000
+#define TRANSMIT_RATE    1000
 #define HEARTBEAT           7
 // NB RATE IS IN MILLISECONDS!!!!
 //
@@ -88,31 +80,18 @@ void stopClock(){
   bursting=false;
 }
 
-
-
 void unifiedMqttConnect() {
   unifiedSubscribe(seqTopic.c_str(),QOS); // T-O-F topic @ chosen QoS   
-  
   startClock();
-//  T3.attach_ms(random((TRANSMIT_RATE *3)/2,TRANSMIT_RATE * 2),[]{ mqttClient.disconnect(); });
 }
 
 void unifiedMqttDisconnect(int8_t reason) {
   Serial.printf("USER: Disconnect reason=%d\n",reason);
   sentThisSession=0;
   stopClock();
-//  T3.detach();
 }
 
 void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool dup, bool retain, size_t len, size_t index, size_t total) {
-//    Serial.printf("UMM: %s %08X, Q=%d D=%d R=%d l=%d i=%d t=%d\n",topic.c_str(),payload,qos,dup,retain,len,index,total);
-//    dumphex(payload,len);
-/*
-    if(random(0,100) > 90){
-      mqttClient.disconnect(); 
-      return;
-    }
-*/
     uint32_t R=payloadToInt(payload,len);
     if(!sentThisSession){
       Serial.printf("***** QoS2 recovery in action! *****\n");
@@ -132,7 +111,6 @@ void unifiedSetup(){
         Serial.printf("Heartbeat: Heap=%u seq=%d number of reconnects=%d\n",ESP.getFreeHeap(),sequence,nRCX);
         Serial.printf("No. Incomplete send/rcv pairs=%d\n",sent.size());
         if(sent.size()){
-//            Serial.printf("Something nasty in the woodshed! SEQ=%d\n",sequence);
             for(auto const& s:sent) Serial.printf("%d,",s);
             Serial.println();
         }

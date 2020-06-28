@@ -18,7 +18,7 @@ namespace PANGO {
             PANGO_REM_LENGTH    _getRemainingLength(uint8_t* p);
             uint16_t            _peek16(uint8_t* p){ return (*(p+1))|(*p << 8); }
             void                _release(mb);
-            void                _resetPingTimers(){ _nPollTicks=_nSrvTicks=0; }
+            void                _resetPingTimers(){ /*Serial.printf("RPT!!! \n");*/_nPollTicks=_nSrvTicks=0; }
             void                _runRXQ();
             void                _runTXQ();
             void                _saveFragment(mb);
@@ -63,20 +63,16 @@ namespace PANGO {
 
 void PANGO::_ackTCP(size_t len, uint32_t time){
 //    PANGO_PRINT("TCP ACK LENGTH=%d\n",len);
+    _resetPingTimers();
     size_t amtToAck=len;
     while(amtToAck){
         if(!TXQ.empty()){
             mb tmp=TXQ.front();
             TXQ.pop();
             amtToAck-=tmp.len;
-//            PANGO_PRINT("****************** ACKACKAMT=%d ACK %s LENGTH=%d remaining=%d\n",amtToAck,PANGO::getPktName(tmp.data[0]),tmp.len,amtToAck);
             tmp.ack();
         }
-        else {
-//            PANGO_PRINT("WAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH remaining=%d\n",amtToAck);
-            PANGO::LIN->_notify(BOGUS_ACK,len);
-            break;
-        }
+        else PANGO::LIN->_notify(BOGUS_ACK,len);
     }
     _runTXQ();
 }
@@ -150,7 +146,6 @@ void PANGO::_send(mb m){
     PANGO_PRINT("----> SEND %s %d bytes on wire\n",PANGO::getPktName(m.data[0]),m.len);
     TCP->add((const char*) m.data,m.len); // ESPAsyncTCP is WRONG on this, it should be a uint8_t*
     TCP->send();
-    _resetPingTimers();
 }
 
 void ICACHE_RAM_ATTR PANGO::_rxPacket(mb m){

@@ -1,11 +1,12 @@
 ![plainhdr](../assets/pangoplain.jpg)
-# Challenges in comparing libraries
+
+# Bugs and problems in AsyncMqttClient
 
 ## Contents
 * [Background](#background)
 * [Show Me The Bugs](#show-me-the-bugs)
     * [Three major flaws causing the numerous bugs in in AsyncMqttClient](#three-major-flaws-cause-multiple-different-bugs)
-    * [List of 12 selected fatal bugs in AsyncMqttClient](#the-main-menu)
+    * [List of 14 selected fatal bugs in AsyncMqttClient](#the-main-menu)
 * [Evidence](#evidence)
   
 ## Background
@@ -13,41 +14,11 @@
 The original intention was to provide a range of examples to allow the user to compare the two libraries in terms of capability, stability and peformance. So for example there was originally a sketch clled TimeOfFlight which sent and received repeated messages, timing how long it took each to make the round-trip between client and server so that the user could compare peformance.
 
 Each sketch was to have an "A_" and a "P_" version so that they could be run side by side to make any such comparisons simple and obvious.
-One such test would, for exampe show Pangolin performing between 10 and 15 times faster than AsyncMqttClient, using identical user code:
+One such test would, for example show Pangolin performing between 10 and 15 times faster than AsyncMqttClient, using identical user code:
 
 ![sigh](../assets/graph1.jpg)
 
-## Change of strategy #1
-
-The original strategy soon had to change, since AsyncMqttClient contained *so many* fatal bugs that the amount of code to "work around" each - just to get *any* value that could be compared - rapidly became unwieldy.
-
-What also started to happen was the the number of sketches started mounting each new flaw appeared in AsyncMqttClient that did *not* occur in Pangolin and thus required yet another "workaround". With so many problms with AsyncMqttClient the number of required sketches became unmanageable.
-
-## Change of strategy #2
-
-It was decided to write "unified" sketches that would run on both libraries using an "abstraction layer" which would "iron out" the API differences and return to the idea of a handful of simple lines in the main sketch. 
-
-This worked well initially with sketches for comparing Time-Of-Flight, large packet handling, and correct QoS1 and 2 operation / recovery. By the time the final tabulation of the results came around, teh Time-Of-Flight sketch alone had ballooned into *hundreds* of lines as code.
-
-This test schedule illustrates the point at which strategy 2 changed:
-
-![gave up](../assets/gaveup.jpg)
-
-# Final strategy
-
-There are now only two sketches:
-
-* A very simple bare-bones "QuickStart" sketch in an ["A_" version](../examples/QuickStart_P/QuickStart_P.ino) and a ["P_" version](../examples/QuickStart_P/QuickStart_P.ino) to allow the user to see what minor changes need to be made to move his apps to Pangolin
-
-* A single huge sketch based on the Time-Of-Flight concept. It needs to be "driven" by an MQTT Client app such as mqttspy but any app that can talk to MQTT will do. It allows the user to send topics to change the number, size, rate and QoS of any messages sent and received by the sketch, It can also be started and stopped at any time to allow results to be examined.
-
-By changing a single `#define` at the top of the sketch it will compile with either library using *identical* code in the sketch itself (plus the "abstraction" layer in `options.h` - which you should not need to look at, and certainly don't touch!)
-
-It is named ["ShowMeTheBugs"](../examples/ShowMeTheBugs/ShowMeTheBugs.ino) because irrespective of what it is *designed* to do when using Pangolin, it will fail repeatedly, randomly and in multiple different ways when compiled with AsyncMqttClient, depending entirely on what values you choose to change from your remote-control app of choice.
-
-***It is simply impossible to write two sketches to make make valid comparisons between two libraries when one of them fails at almost every step.***
-
----
+That strategy soon had to change, since AsyncMqttClient contained *so many* fatal bugs that the amount of code to "work around" each - just to get *any* value that could be compared - rapidly became unwieldy and rendered any comparisons pointles, since AsyncMqttClient ***simply does not work***
 
 # Show Me The Bugs
 
@@ -72,7 +43,7 @@ AsyncMqttClient does not *usually* enter the "danger zone" where the bugs live a
 
 Is a failure by the author of AsyncMqttClient to understand that LwIP is *asynchronous* and will send data when *it* decides to - which is *not* necessarily the same time as when it is called by the library. This means that any data passed to it must stay in existence until LwIP tells the library it is safe to release it.
 
-AsyncMqttClient *always* release it immediately after the call to send, meaning that it *always* passes an invalid data pointer to LwIP unless the data is static. Yes, *every time*. The only reason it works *at all* is that - by chance - the orignal data is still in the same place when LwIP decides to send it. When it is *not* then AsyncMqttClient will fail, it's that simple. Of course this depends on so many different factors that it appears "random". This is the cause of the spontaneous DCX/CNX bug.
+AsyncMqttClient *always* releases it immediately after the call to send, meaning that it *always* passes an invalid data pointer to LwIP unless the data is static. Yes, *every time*. The only reason it works *at all* is that - by chance - the orignal data is often still in the same place and has not *yet* been overwritten/resued when LwIP decides to send it. When it has *changed* then AsyncMqttClient will fail, it's that simple. Of course this depends on so many different factors that it appears "random". This is the cause of the frequent spontaneous DCX/CNX bug.
 
 
 ### Major Flaw #2 "MF2" (Poor TCP buffer management)
@@ -81,13 +52,13 @@ If your call to AsyncMqttClient survives the always-illegal pointer problem, it 
 
 ### Major Flaw #3 "MF3" (Abdication of inbound fragment reassembly)
 
-On input the author expects the user to reassemble any fragmented packets, which is a non-trivial task and beyond many beginners. *If* the user does not write this complex code then two fragments of one message wil appear a two individual messages and the user's code will get "out of step" which is annoying, but....
+On input the author expects the user to reassemble any fragmented packets, which is a non-trivial task and beyond many beginners. *If* the user does not write this complex code then two fragments of one message will appear a two individual messages and the user's code will get "out of step" which is annoying, but....
 
 ...If the fragmented packet is a "control" packet such as a QoS1 acknowledgement, then since it is never seen as a whole packet by the library, it cannot correctly operate the QoS "handshake" process - which is fatal. Put simply: ***QoS1 and 2 CANNOT work unless input packets are correctly re-assembled and dispatched***
 
-## The main menu:
+## Selected bugs:
 
-This list is not exhaustive, there are many more, these are just some of the worst. Some of the bugs have links to supporting evidence, some don't. For those that don't, you can either take my word or try them yourself: being honest, I just gave up. Bugs caused by honest-to-goodness poor programming are marked "PP"
+This list is not exhaustive, there are many more, these are just some of the worst and the ones that are either fatal or prevent QoS1 and/or 2 from having any chance of working. Some of the bugs have links to supporting evidence, some don't. For those that don't, you can either take my word or try them yourself: being honest, I just gave up. Bugs caused by honest-to-goodness poor programming are marked "PP"
 
 1. Spontaneous DCX/CNX. [MF1]
 2. [Will Topic bug](#setwill) Prevents sketch from starting with non-static input. [MF1]
@@ -101,8 +72,10 @@ This list is not exhaustive, there are many more, these are just some of the wor
 10. [QoS1 Protocol Violation](#qos1-protocol-violation) [MF2][MF3]
 11. [Fragment Failure](#fragment-failure) [MF3]
 12. [Numerous API errors](api.md) - sufficient for their own document
+13. [QoS 1/2 protocol violation - no message resend][PP](#qos-12-protocol-violation---no-message-resend)[PP]
+14. [QoS 1/2 protocol violation - no session recovery](#qos-12-protocol-violation---no-session-recovery)[PP]
 
-## The Dessert Menu
+## Other potential bugs
 
 Not listed above are the multiple instances of random crashes, data corruption etc etc etc also encountered during these tests when Wireshark wasn't running or the example sketch diagnostics happened to be off...
 
@@ -113,9 +86,9 @@ Each of MF1, 2 and 3 can individually be the cause of:
 * Message data corruption
 * Other QoS protocol violations
  
-When combining any permutation of them due to a happenstance of timing, the worl is your Oyster for potential as-yet-unknown failures.
+When combining any permutation of them due to a happenstance of timing, the world is your Oyster for potential as-yet-unknown failures.
 
-The inescapable conclusion of the "dirty dozen" above is that AsyncMqttClient is simply ***not fit for purpose*** and should be avoided at all costs since it simply ***does not work***
+The inescapable conclusion is that AsyncMqttClient is simply ***not fit for purpose*** and should be avoided at all costs since it simply ***does not work***
 
 ---
 # Evidence
@@ -176,7 +149,7 @@ AsyncMqttClient sending QoS1 packets out of order:
 
 ![qosfail](../assets/qos1fail.jpg)
 
-And yes, this *does* matter - very much - or why would the spec insist upon it? Te simple answer is that the *server* cannot keep its promise if this is not true, hence yet more proof that AsyncMqttClient simply ***does not work*** above QoS0
+And yes, this *does* matter - very much - or why would the spec insist upon it? The simple answer is that the library cannot keep its QoS1 promise if this is not true, hence yet more proof that AsyncMqttClient simply ***does not work*** above QoS0
 
 ## Fragment failure
 
@@ -195,3 +168,17 @@ MQTT QoS depends on a "handshake" protocol of packet exchange. At QoS1 I send PU
 
 Except of course in the "lucky" cases where no particularly troublesome combination of message size, buffer size and send/recieve rate conspire to always put whole control packets "on the wire". In the "random" cases where they *do* - it will fail.
 
+## QoS 1/2 Protocol Violation - no message resend
+
+TOL makes no attempt whatsover to conform with MQTT-4.4.0-1 and resend failed QoS1 and/or 2 transactions on reconnect:
+
+
+![pv2mqtt](../assets/pv2mqtt.jpg)
+
+![pv2](../assets/pv2.jpg)
+
+## QoS 1/2 Protocol Violation - no session recovery
+
+![pv3](../assets/pv3mqtt.jpg)
+
+The code above also does not check the returned session state, therefore it cannot possible react / behave differently when session recovery is required and is a protocol violation of MQTT-3.1.2-6
