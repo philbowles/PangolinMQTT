@@ -159,9 +159,9 @@ You will need to install one or both of those before using Pangolin
 
 Obviously I will check the issues here from time to time, but if you want a rapid resonse, I can usually be found moderating on of these FB groups, including a new one especially set up for Pangolin users:
 
-[Pangolin Support](https://www.facebook.com/groups/pangolinmqtt/)
-[ESP8266 & ESP32 Microcontrollers](https://www.facebook.com/groups/2125820374390340/)
-[ESP Developers](https://www.facebook.com/groups/ESP8266/)
-[H4/Plugins support](https://www.facebook.com/groups/h4plugins)
+* [Pangolin Support](https://www.facebook.com/groups/pangolinmqtt/)
+* [ESP8266 & ESP32 Microcontrollers](https://www.facebook.com/groups/2125820374390340/)
+* [ESP Developers](https://www.facebook.com/groups/ESP8266/)
+* [H4/Plugins support](https://www.facebook.com/groups/h4plugins)
 
 (C) 2020 Phil Bowles
