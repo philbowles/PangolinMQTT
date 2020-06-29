@@ -6,7 +6,36 @@
 ![mbm](assets/mbm.jpg)
   
 ---
+# Contents
 
+- [Coming Soon:](#coming-soon)
+  - [PangolinMQTT - ArduinoIDE client library for ESP8266, ESP32 and STM32-NUCLEO](#pangolinmqtt---arduinoide-client-library-for-esp8266-esp32-and-stm32-nucleo)
+          - [*Version 0.0.6 - Alpha testers only - please do not fork/download unless you have been specifically asked*](#version-006---alpha-testers-only---please-do-not-forkdownload-unless-you-have-been-specifically-asked)
+- [Contents](#contents)
+- [Other Documennts](#other-documennts)
+  - [* Example Sketches](#ulliexample-sketchesliul)
+- [Features](#features)
+  - [All of this:](#all-of-this)
+    - [Quick Start for existing users of `AsyncMqttClient`](#quick-start-for-existing-users-of-asyncmqttclient)
+    - [A better API](#a-better-api)
+    - [And NONE of this (so far: it's "alpha"!)](#and-none-of-this-so-far-its-alpha)
+- [Comparison with AsyncMqttClient](#comparison-with-asyncmqttclient)
+  - [1 Large Payloads](#1-large-payloads)
+    - [Executive summary](#executive-summary)
+    - [TL;DR The `AsyncMqttClient` way](#tldr-the-asyncmqttclient-way)
+    - [TL;DR The Pangolin way](#tldr-the-pangolin-way)
+  - [2 *Significant* performance improvements](#2-significant-performance-improvements)
+    - [Executive Summary](#executive-summary-1)
+  - [3 Additional functionality](#3-additional-functionality)
+    - [Executive Summary](#executive-summary-2)
+  - [4 Stability](#4-stability)
+  
+# Other Documennts
+* [Challenges of embedded MQTT](docs/qos.md)
+* [Problems / errors in the AsyncMqttClient API](docs/api.md)
+* [List of 16 fatal bugs in AsyncMqttClient (with evidence)](docs/bugs.md)
+* [Example Sketches](docs/examples.md)
+---
 # Features
  * Full* MQTT v3.1.1 Qos0/1/2 compliance, session management and recovery
  * Payload size limited only by available heap (~20kB on ESP8266)
@@ -44,7 +73,7 @@ For an in-depth analysis (with evidence) of those problems, read [API issues](ap
 
 Take a look at the first - very simple - example which exists in two forms: A ["P_" version](examples/QuickStart_P/QuickStart_P.ino) which uses Pangolin and an ["A_" version](examples/QuickStart_A/QuickStart_A.ino) which uses `AsyncMqttClient`. A side-by-side comparison of the two shows the very minimal changes required to get you up and running. (Also a single glance at the [comparison](#comparison-with-asyncmqttclient) of the two outputs gives a good overview of the major differences between Pangolin and `AsyncMqttClient`)
 
-The remainder of the Examples start with the "U_" prefix which signifies "Unified". See the [section below](#examples) on what this means an how to get the best out of them.
+The remainder of the Examples can be compiled for either Pangolin or AsyncMqttClient to allow you to compare the two libraries in the few cases where AsynClientMqtt doesn't fail. See the [Example Sketches](docs/examples.md) on how to run them and get the best out of the code.
 
 ### A better API
 
@@ -76,7 +105,7 @@ String              payloadToString(uint8_t* data,size_t len);
 
 Full details, explanation and rationale for the changes [here](docs/api.md)
 
-## And NONE of this (so far: it's "alpha"!)
+### And NONE of this (so far: it's "alpha"!)
 
 ![setwill](assets/willtopic_shark.jpg)
 
@@ -135,12 +164,5 @@ String              payloadToString(uint8_t* data,size_t len);
 
 ## 4 Stability
 
-## Executive Summary
+Pangolin is "alpha" so *of course* it is likely to contain bugs. What *can* be said though is that whatever yet-to-be-found bugs it may still contain, even at this first release it does *not* contain the bug that causes `AsyncMqttClient` to regularly (but at random) enter a disconnect/reconnect cycle - which is *so* common it will be referred to from now as "DCX/CNX". Neither does it contain the bug which prevents AsyncMqttClient from totally failing to implement QoS1 and 2, nor any of the other 16 fatal bugs in AsyncMqttClient [listed here](docs/bugs.md)
 
-Pangolin is "alpha" so *of course* it is likely to contain bugs. What *can* be said though is that whatever yet-to-be-found bugs it may still contain, even at this first release it does *not* contain the bug that causes `AsyncMqttClient` to regularly (but at random) enter a disconnect/reconnect cycle - which is *so* common it will be referred to from now as "DCX/CNX".  [Read more](docs/bugs.md)
-
-Neither does it contain any of the bugs in `AsyncMqttClient` described [here](docs/bugs.md). 
-
-## 5 (not shown) Far less bugs
-
-Read a detailed analysis - with supporting evidence - of [12 fatal bugs in AsyncMqtt](docs/bugs.md) and how Pangolin avoids them
