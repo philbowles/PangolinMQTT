@@ -58,6 +58,7 @@ bool      bursting=false; // send clock interlock
 
 std::set<uint32_t> sent;
 uint32_t sentThisSession=0;
+uint32_t nDups=0;
 
 void sendNextInSequence(){
   char buf[16];
@@ -65,8 +66,8 @@ void sendNextInSequence(){
   sent.insert(sequence);
   ++sentThisSession;
   unifiedPublish(seqTopic.c_str(), QOS, false, (uint8_t*) buf, PAYLOAD_SIZE);
+  if(random(0,100) > 95) mqttClient.disconnect(); 
   Serial.printf("SENT %s (thisSession=%d)\n",buf,sentThisSession);
-  //if(random(0,100) > 95) mqttClient.disconnect(); 
 }
 
 void startClock(){
@@ -98,13 +99,16 @@ void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool d
       Serial.printf("We have not yet sent any messages, but %d just came in!\n",R);
     }
     Serial.printf("RCVD %u\n",R);
-    if(dup) Serial.printf("QOS1 DUPLICATE VALUE RECEIVED / %d\n",R);
+    if(dup) { 
+      Serial.printf("QOS1 DUPLICATE VALUE RECEIVED / %d\n",R);
+      ++nDups;
+    }
     sent.erase(R);
 }
 // set qos topic names and start HB ticker
 void unifiedSetup(){
     PT1.attach(HEARTBEAT,[]{
-        Serial.printf("Heartbeat: Heap=%u seq=%d number of reconnects=%d\n",ESP.getFreeHeap(),sequence,nRCX);
+        Serial.printf("Heartbeat: Heap=%u seq=%d nDups=%d number of reconnects=%d\n",ESP.getFreeHeap(),sequence,nDups,nRCX);
         Serial.printf("No. Incomplete send/rcv pairs=%d\n",sent.size());
         if(sent.size()){
             for(auto const& s:sent) Serial.printf("%d,",s);

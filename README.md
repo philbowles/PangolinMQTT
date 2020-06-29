@@ -1,21 +1,14 @@
-# Coming Soon:
-## PangolinMQTT - ArduinoIDE client library for ESP8266, ESP32 and STM32-NUCLEO
+![mbm](assets/pangoplain.jpg)
 
-###### *Version 0.0.6 - Alpha testers only - please do not fork/download unless you have been specifically asked*
+# ArduinoIDE MQTT client library for ESP8266, ESP32 and STM32-NUCLEO
 
-![mbm](assets/mbm.jpg)
-  
+###### *Version 0.0.7 - Beta - not recommended (yet) for critical applications*
+
 ---
-# Contents
-
-- [Coming Soon:](#coming-soon)
-  - [PangolinMQTT - ArduinoIDE client library for ESP8266, ESP32 and STM32-NUCLEO](#pangolinmqtt---arduinoide-client-library-for-esp8266-esp32-and-stm32-nucleo)
-          - [*Version 0.0.6 - Alpha testers only - please do not fork/download unless you have been specifically asked*](#version-006---alpha-testers-only---please-do-not-forkdownload-unless-you-have-been-specifically-asked)
-- [Contents](#contents)
+- [ArduinoIDE MQTT client library for ESP8266, ESP32 and STM32-NUCLEO](#arduinoide-mqtt-client-library-for-esp8266-esp32-and-stm32-nucleo)
+          - [*Version 0.0.7 - Beta - not recommended (yet) for critical applications*](#version-007---beta---not-recommended-yet-for-critical-applications)
 - [Other Documennts](#other-documennts)
-  - [* Example Sketches](#ulliexample-sketchesliul)
 - [Features](#features)
-  - [All of this:](#all-of-this)
     - [Quick Start for existing users of `AsyncMqttClient`](#quick-start-for-existing-users-of-asyncmqttclient)
     - [A better API](#a-better-api)
     - [And NONE of this (so far: it's "alpha"!)](#and-none-of-this-so-far-its-alpha)
@@ -29,22 +22,23 @@
   - [3 Additional functionality](#3-additional-functionality)
     - [Executive Summary](#executive-summary-2)
   - [4 Stability](#4-stability)
+- [Issues / Support](#issues--support)
   
 # Other Documennts
 * [Challenges of embedded MQTT](docs/qos.md)
 * [Problems / errors in the AsyncMqttClient API](docs/api.md)
 * [List of 16 fatal bugs in AsyncMqttClient (with evidence)](docs/bugs.md)
 * [Example Sketches](docs/examples.md)
+  
 ---
 # Features
  * Full* MQTT v3.1.1 Qos0/1/2 compliance, session management and recovery
- * Payload size limited only by available heap (~20kB on ESP8266)
+ * Payload size limited only by available heap (~20kB on ESP8266, ~120kb on ESP32)
  * Compilable diagnostics and testing topics:
    * dump
    * reboot
    * disconnect
    * break selected QoS1/2 handshakes for session recovery testing
-   * fix broken handshakes for session recovery testing
  * Utility functions to view binary payloads and handle as:
    * C-style string (`char*`)
    * `std::string`
@@ -60,8 +54,6 @@
 * `PubSubClient`  - not at all: QoS0 only and 128-byte payload limit
 * `AsyncMqttClient` - poorly / not at all: crashes on huge inward packets, limits outbound to 1-2kB and loses QoS1/2 recovery messages, fails to attempt session recovery and has no method of informing the user of either failure. Put simply, *it doesn't work*
 * `Pangolin` (*this* library) - as far as is technically possible, while informing the user of inevitable inherent failures.
-
-## All of this:
 
 ### Quick Start for existing users of `AsyncMqttClient`
 
@@ -166,3 +158,15 @@ String              payloadToString(uint8_t* data,size_t len);
 
 Pangolin is "alpha" so *of course* it is likely to contain bugs. What *can* be said though is that whatever yet-to-be-found bugs it may still contain, even at this first release it does *not* contain the bug that causes `AsyncMqttClient` to regularly (but at random) enter a disconnect/reconnect cycle - which is *so* common it will be referred to from now as "DCX/CNX". Neither does it contain the bug which prevents AsyncMqttClient from totally failing to implement QoS1 and 2, nor any of the other 16 fatal bugs in AsyncMqttClient [listed here](docs/bugs.md)
 
+---
+
+# Issues / Support
+
+Obviously I will check the issues here from time to time, but if you want a rapid resonse, I can usually be found moderating on of these FB groups, including a new one especially set up for Pangolin users:
+
+[Pangolin Support](https://www.facebook.com/groups/pangolinmqtt/)
+[ESP8266 & ESP32 Microcontrollers](https://www.facebook.com/groups/2125820374390340/)
+[ESP Developers](https://www.facebook.com/groups/ESP8266/)
+[H4/Plugins support](https://www.facebook.com/groups/h4plugins)
+
+(C) 2020 Phil Bowles
