@@ -38,9 +38,7 @@ namespace PANGO {
     extern  AsyncClient*     TCP;
     extern  PangolinMQTT*    LIN;
     extern  PANGO_MSG_Q      TXQ;
-    extern  PANGO_MSG_Q      RXQ;
     extern  PANGO_FRAGMENTS  _fragments;
-//    extern  bool             _inflight;
     extern  uint16_t         _maxRetries;
     extern  uint32_t         _nPollTicks;
     extern  uint32_t         _nSrvTicks;
