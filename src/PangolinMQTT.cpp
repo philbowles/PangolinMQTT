@@ -71,15 +71,11 @@ void PangolinMQTT::setServer(const char* host, uint16_t port) {
   _port = port;
 }
 //
-//
-//
 #if ASYNC_TCP_SSL_ENABLED
-
 void PangolinMQTT::serverFingerprint(const uint8_t* fingerprint) {
     memcpy(_fingerprint, fingerprint, SHA1_SIZE);
     PANGO::_secure=true;
 }
-
 #endif
 void PangolinMQTT::_destroyClient(){
     if(PANGO::TCP) {
