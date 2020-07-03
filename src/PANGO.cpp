@@ -105,8 +105,8 @@ const char* PANGO::_HAL_getUniqueId(){
 void PANGO::_HAL_feedWatchdog(){}
 uint32_t PANGO::_HAL_getFreeHeap(){ return ESP.getFreeHeap(); }
 const char* PANGO::_HAL_getUniqueId(){
-    static char buf[13];
-    sprintf(buf, "esp32-%06llX", ESP.getEfuseMac());
+    static char buf[19];
+    sprintf(buf, "esp32-%12llX", ESP.getEfuseMac());
     return buf;
 }
 #else
@@ -199,6 +199,7 @@ void PANGO::_send(mb m){
 }
 
 void  PANGO::_txPacket(mb m){
+    PANGO::dump();
     TXQ.push(m);
     if(TXQ.size()==1) _release(m);
 }

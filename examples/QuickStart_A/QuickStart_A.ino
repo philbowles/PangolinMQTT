@@ -1,3 +1,7 @@
+/*
+        Default is ESP8266 - if you want to compile for ESP32, Look a the code in QuickStart_P
+        and splice the relevant bits of code in here
+*/
 #include <ESP8266WiFi.h>
 #include <AsyncMqttClient.h>
 #include<string>

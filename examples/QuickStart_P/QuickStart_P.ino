@@ -1,4 +1,9 @@
+#ifdef ARDUINO_ARCH_ESP8266
 #include <ESP8266WiFi.h>
+#else
+#include <WiFi.h>
+#endif
+
 #include <Ticker.h>
 #include <PangolinMQTT.h>
 #include<string>
@@ -9,20 +14,42 @@
 #define MQTT_HOST IPAddress(192, 168, 1, 21)
 #define MQTT_PORT 1883
 
+#define RECONNECT_DELAY_W 5
+
 uint32_t elapsed=0;
 
 PangolinMQTT mqttClient;
 Ticker mqttReconnectTimer;
+Ticker wifiReconnectTimer;
 
+#ifdef ARDUINO_ARCH_ESP8266
 WiFiEventHandler wifiConnectHandler;
 WiFiEventHandler wifiDisconnectHandler;
-Ticker wifiReconnectTimer;
+#else
+void WiFiEvent(WiFiEvent_t event) {
+    Serial.printf("[WiFi-event] event: %d\n", event);
+    switch(event) {
+    case SYSTEM_EVENT_STA_GOT_IP:
+        Serial.println("WiFi connected");
+        Serial.println("IP address: ");
+        Serial.println(WiFi.localIP());
+        connectToMqtt();
+        break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+        Serial.println("WiFi lost connection");
+        mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
+        wifiReconnectTimer.once(RECONNECT_DELAY_W, connectToWifi);
+        break;
+    }
+}
+#endif
 
 void connectToWifi() {
   Serial.println("Connecting to Wi-Fi...");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }
 
+#ifdef ARDUINO_ARCH_ESP8266
 void onWifiConnect(const WiFiEventStationModeGotIP& event) {
   Serial.println("Connected to Wi-Fi.");
   connectToMqtt();
@@ -31,15 +58,18 @@ void onWifiConnect(const WiFiEventStationModeGotIP& event) {
 void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
   Serial.println("Disconnected from Wi-Fi.");
   mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
-  wifiReconnectTimer.once(2, connectToWifi);
+  wifiReconnectTimer.once(RECONNECT_DELAY_W, connectToWifi);
 }
+#endif
 
 void connectToMqtt() {
   Serial.println("Connecting to MQTT...");
   mqttClient.connect();
 }
 
-std::string pload="multi-line payload hex dumper which should split over several lines, with some left over";
+std::string pload0="multi-line payload hex dumper which should split over several lines, with some left over";
+std::string pload1="PAYLOAD QOS1";
+std::string pload2="Save the Pangolin!";
 
 void onMqttConnect(bool sessionPresent) {
   elapsed=millis();
@@ -47,11 +77,11 @@ void onMqttConnect(bool sessionPresent) {
   Serial.println("Subscribing at QoS 2");
   mqttClient.subscribe("test", 2);
   Serial.printf("T=%u Publishing at QoS 0\n",millis());
-  mqttClient.publish("test", 0, false, pload);
+  mqttClient.publish("test", 0, false, pload0);
   Serial.printf("T=%u Publishing at QoS 1\n",millis());
-  mqttClient.publish("test", 1, false, pload);
+  mqttClient.publish("test", 1, false, pload1);
   Serial.printf("T=%u Publishing at QoS 2\n",millis());
-  mqttClient.publish("test", 2, false, pload);
+  mqttClient.publish("test", 2, false, pload2);
 }
 
 void onMqttDisconnect(int8_t reason) {
@@ -71,8 +101,12 @@ void setup() {
   Serial.begin(115200);
   Serial.printf("\nPangolinMQTT v0.0.7\n");
 
+#ifdef ARDUINO_ARCH_ESP8266
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
   wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
+#else
+  WiFi.onEvent(WiFiEvent);
+#endif
 
   mqttClient.onConnect(onMqttConnect);
   mqttClient.onDisconnect(onMqttDisconnect);

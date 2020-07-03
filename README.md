@@ -6,6 +6,7 @@
 
 * [Features](#features)
 * [Comparison with AsyncMqttClient](#comparison-with-asyncmqttclient)
+* [IMPORTANT NOTE FOR PLATFORMIO USERS]
 * [Installation](#installation)
 * [Issues / Support](#issues--support)
 
@@ -160,6 +161,19 @@ You will need to install one or both of those before using Pangolin
 ---
 
 # Issues / Support
+
+## IMPORTANT NOTE FOR PLATFORMIO USERS
+
+Pangolin is an *Arduino library*, and is 100% compatible with the ArduinoIDE and build system. PlatformIO, sadly, ***is not***. If PlatformIO has problems with code that compiles and runs correctly under ArduinoIDE, then it is a ***PlatformIO problem***, not an issue with this - or any other - valid Arduino library.
+
+For over 3 years I have been notifying the PlatformIO team of errors in their build setting related to the use of non-standard and non ArduinoIDE-compatible architecture #defines which break *many* vaild Arduino libraries. For over 3 years they have failed to fix it,so I refuse to provide any support on any of my 100% Arduino compatible libraries for users of PlatformIO until they do.
+
+For this reason, I will not accept any issues relating to build problems with PlatformIO, nor any pull requests or other suggestions which involve any changes that render the library less than 100% ArduinoIDE compatible. If you don't like this, you have two options:
+
+* Petition, moan, complain to PlatformIO dev team to make it 100% Arduino-compatible
+* Use another library - my position ***will not change*** until PlatformIO fix their problems
+
+## Non PlatformIO-related issues
 
 Obviously I will check the issues here from time to time, but if you want a rapid resonse, I can usually be found moderating on of these FB groups, including a new one especially set up for Pangolin users:
 

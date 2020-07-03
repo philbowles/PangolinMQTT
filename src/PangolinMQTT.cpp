@@ -24,16 +24,6 @@ SOFTWARE.
 */
 #include <PangolinMQTT.h>
 #include "Packet.h"
-#ifdef PANGO_DEBUG
-    bool IACK=false;
-    bool OACK=false;
-    bool IREC=false;
-    bool IREL=false;
-    bool ICOM=false;
-    bool OREC=false;
-    bool OREL=false;
-    bool OCOM=false;
-#endif
 
 std::string          PangolinMQTT::_username;
 std::string          PangolinMQTT::_password;
@@ -114,45 +104,17 @@ void PangolinMQTT::_fatal(uint8_t e,int info){
 
 void PangolinMQTT::_handlePublish(mb m){
     PANGO_PRINT("INBOUND PUBLISH %s id=%d @ QoS%d R=%s DUP=%d PL@%08X PLEN=%d\n",m.topic.c_str(),m.id,m.qos,m.retain ? "true":"false",m.dup,m.payload,m.plen);
-
-#ifdef PANGO_DEBUG
-    if(m.topic=="PANGO"){
-        PANGO_PRINT("PANGO DEBUG TOPIC FH=%u\n",PANGO::_HAL_getFreeHeap());
-        debugHandler(m.payload,m.plen);
-        return;
-    }
-#endif
-
     switch(m.qos){
         case 1:
-            {
-#ifdef PANGO_DEBUG
-            if(OACK) PANGO_PRINT("BROKEN OUTBOUND PUBACK FOR QOS1 SESSION RECOVERY TESTING\n");
-            else {
-#endif
-                PubackPacket pap(m.id);
-#ifdef PANGO_DEBUG
-            }
-#endif
-            }
+            { PubackPacket pap(m.id); }
         case 0:
             _hpDespatch(m);
             break;
         case 2:
         //  MQTT Spec. "method A"
-            if(m.dup) PANGO_PRINT("QOS2 SESSION RECOVERY id=%d\n",m.id);
             {
-//
-#ifdef PANGO_DEBUG
-            if(OREC) { PANGO_PRINT("BROKEN OUTBOUND PUBREC FOR QOS2 SESSION RECOVERY TESTING\n"); OREC=false; }
-            else {
-#endif
                 PublishPacket pub(m.topic.c_str(),m.qos,m.retain,m.payload,m.plen,0,m.id); // build and HOLD until PUBREL force dup=0
                 PubrecPacket pcp(m.id);
-#ifdef PANGO_DEBUG
-            }
-#endif
-//
             }
             break;
     }
@@ -166,17 +128,11 @@ void PangolinMQTT::_handlePacket(mb m){
         case CONNACK:
             if(i[1]) _fatal(UNRECOVERABLE_CONNECT_FAIL,i[1]);
             else {
-                PANGO::dump();
                 PANGO::_space=PANGO::TCP->space();
                 bool session=i[0] & 0x01;
                 Serial.printf("\nSESSION IS %s\n",session ? "DIRTY":"CLEAN");
                 Packet::_resendPartialTxns();
                 PANGO_PRINT("CONNECTED FH=%u SH=%u\n",PANGO::_HAL_getFreeHeap(),getMaxPayloadSize());
-#ifdef PANGO_DEBUG
-//              our own topic for debugging
-                PANGO_PRINT("Auto-subscribed to PANGO\n");
-                SubscribePacket pango("PANGO",0);
-#endif                    
                 if(_cbConnect) _cbConnect(session);
             }
         case PINGRESP:
@@ -189,71 +145,27 @@ void PangolinMQTT::_handlePacket(mb m){
             if(_cbUnsubscribe) _cbUnsubscribe(id);
             break;
         case PUBACK:
-#ifdef PANGO_DEBUG
-            if(IACK) PANGO_PRINT("BROKEN INBOUND PUBACK FOR QOS1 SESSION RECOVERY TESTING\n");
-            else {
-#endif
             Packet::ACKoutbound(id);
             if(_cbPublish) _cbPublish(id);
-#ifdef PANGO_DEBUG
-            }
-#endif
             break;
         case PUBREC:
-#ifdef PANGO_DEBUG
-            if(IREC) { PANGO_PRINT("BROKEN INBOUND PUBREC FOR QOS2 SESSION RECOVERY TESTING\n"); IREC=false; }
-            else {
-#endif
             {
-#ifdef PANGO_DEBUG
-            if(OREL) { PANGO_PRINT("BROKEN OUTBOUND PUBREL FOR QOS2 SESSION RECOVERY TESTING\n"); OREL=false; }
-            else {
-#endif
                 Packet::_outbound[id].pubrec=true;
                 PubrelPacket prp(id);
-#ifdef PANGO_DEBUG
             }
-#endif
-            }
-#ifdef PANGO_DEBUG
-            }
-#endif
             break;
         case PUBREL:
-#ifdef PANGO_DEBUG
-            if(IREL) { PANGO_PRINT("BROKEN INBOUND PUBREL FOR QOS2 SESSION RECOVERY TESTING\n"); IREL=false; }
-            else {
-#endif
             {
                 if(Packet::_inbound.count(id)) {
                     _hpDespatch(Packet::_inbound[id]);
                     Packet::_ACK(&Packet::_inbound,id,true); // true = inbound
                 } else PANGO::LIN->_notify(INBOUND_QOS_ACK_FAIL,id);
-
-#ifdef PANGO_DEBUG
-            if(OCOM) { PANGO_PRINT("BROKEN OUTBOUND PUBCOMP FOR QOS2 SESSION RECOVERY TESTING\n"); OCOM=false; }
-            else {
-#endif
-                    PubcompPacket pcp(id); // pubrel
-#ifdef PANGO_DEBUG
+                PubcompPacket pcp(id); // pubrel
             }
-#endif
-//
-            }
-#ifdef PANGO_DEBUG
-            }
-#endif
             break;
         case PUBCOMP:
-#ifdef PANGO_DEBUG
-            if(ICOM) { PANGO_PRINT("BROKEN INBOUND PUBCOMP FOR QOS2 SESSION RECOVERY TESTING\n"); ICOM=false; }
-            else {
-#endif
             Packet::ACKoutbound(id);
             if(_cbPublish) _cbPublish(id);
-#ifdef PANGO_DEBUG
-            }
-#endif
             break;
         default:
             if(m.isPub()) _handlePublish(m);
@@ -273,7 +185,6 @@ uint8_t* PangolinMQTT::_packetReassembler(mb m){
     static uint32_t received=0;
     static bool midFrag=false;
     static bool discard=false;
-//    m.dump();
     uint32_t    me=m.len; // unless told otherwise;
     if(midFrag){
         if(expecting-received>m.len){
@@ -373,7 +284,6 @@ void PangolinMQTT::connect() {
     PANGO::TCP=new AsyncClient;
     PANGO::TCP->setNoDelay(true);
     PANGO::TCP->onConnect([this](void* obj, AsyncClient* c) { 
-
 #if ASYNC_TCP_SSL_ENABLED
     if(PANGO::_secure) {
         SSL* clientSsl = PANGO::TCP->getSSL();
@@ -383,7 +293,6 @@ void PangolinMQTT::connect() {
         }
     }
 #endif
-
         ConnectPacket cp{};
     }); // *NOT* A MEMORY LEAK! :)
     PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { PANGO_PRINT("TCP CHOPPED US!\n"); _onDisconnect(TCP_DISCONNECTED); });
@@ -439,41 +348,6 @@ void PangolinMQTT::_cleanStart(){
     for(auto &i:Packet::_outbound) i.second.clear();
     Packet::_outbound.clear();
 
-    PANGO_PRINT("We are now next to godly :)\n");
+    PANGO_PRINT("We are now clean:)\n");
     Packet::_nextId=1000; // SO much easier to differentiate client vs server IDs in Wireshark log :)
 }
-//
-//   DEBUG TOPIC HANDLER
-//
-#ifdef PANGO_DEBUG
-void PangolinMQTT::debugHandler(uint8_t* payload,size_t length){
-    PANGO_PRINT("PANGO DEBUG HANDLER\n");
-    PANGO::dumphex(payload,length);
-    char sp[length+1];
-    memcpy(sp,payload, length);
-    sp[length]='\0';
-    std::string pl(sp);
-    if(pl=="dump"){ PANGO::dump(); }
-    else if(pl=="dirty"){ 
-        PANGO_PRINT("\n\nFORCE DIRTY\n\n");
-        _cleanSession=false;
-        _onDisconnect(97);        
-    }
-    else if(pl=="clean"){
-        PANGO_PRINT("\n\nFORCE CLEAN\n\n");
-        _cleanSession=true;
-        _onDisconnect(97);
-    }
-    else if(pl=="disco"){ _onDisconnect(99); }
-//    else if(pl=="reboot"){ ESP.restart(); }
-    else if(pl=="IACK"){ IACK=true; PANGO_PRINT("\n\nIACK\n\n"); }
-    else if(pl=="OACK"){ OACK=true; PANGO_PRINT("\n\nOACK\n\n"); }
-    else if(pl=="IREC"){ IREC=true; PANGO_PRINT("\n\nIREC\n\n"); }
-    else if(pl=="IREL"){ IREL=true; PANGO_PRINT("\n\nIREL\n\n"); }
-    else if(pl=="ICOM"){ ICOM=true; PANGO_PRINT("\n\nICOM\n\n"); }
-    else if(pl=="OREC"){ OREC=true; PANGO_PRINT("\n\nOREC\n\n"); }
-    else if(pl=="OREL"){ OREL=true; PANGO_PRINT("\n\nOREL\n\n"); }
-    else if(pl=="OCOM"){ OCOM=true; PANGO_PRINT("\n\nOCOM\n\n"); }
-    else PANGO_PRINT("UNKNOWN CMD %s\n",pl.c_str());
-}
-#endif
