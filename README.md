@@ -145,6 +145,10 @@ String              payloadToString(uint8_t* data,size_t len);
 
 Pangolin is "alpha" so *of course* it is likely to contain bugs. What *can* be said though is that whatever yet-to-be-found bugs it may still contain, even at this first release it does *not* contain the bug that causes `AsyncMqttClient` to regularly (but at random) enter a disconnect/reconnect cycle - which is *so* common it will be referred to from now as "DCX/CNX". Neither does it contain the bug which prevents AsyncMqttClient from totally failing to implement QoS1 and 2, nor any of the other 16 fatal bugs in AsyncMqttClient [listed here](docs/bugs.md)
 
+At the time of writing, a "soak test" of the [Session Recovery 2 example sketch](examples/SessionRecovery2/SessionRecovery2.ino) shows that PangolinMQTT has been running for 194022 seconds (53.895 hours) without a single reconnection or message lost, while sending and receiving a QoS2 message every second.
+
+![soak](/assets/soak.jpg)
+
 ---
 
 # Installation

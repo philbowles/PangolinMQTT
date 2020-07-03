@@ -43,26 +43,9 @@ uint8_t              PangolinMQTT::_willQos;
 bool                 PangolinMQTT::_willRetain;
 uint16_t             PangolinMQTT::_keepalive=15 * PANGO_POLL_RATE; // 10 seconds
 bool                 PangolinMQTT::_cleanSession=true;
-std::string          PangolinMQTT::_clientId;
 PANGO_cbError        PangolinMQTT::_cbError=nullptr;
 
-void PangolinMQTT::_destroyClient(){
-    if(PANGO::TCP) {
-        PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { }); // prevent recursion
-        delete PANGO::TCP; // causes a recurse!
-        PANGO::TCP=nullptr;
-    }
-}
-
-PangolinMQTT::PangolinMQTT() {
-    PANGO::LIN=this;
-#ifdef ARDUINO_ARCH_ESP32
-  sprintf(_generatedClientId, "esp32-%06llx", ESP.getEfuseMac());
-#elif defined(ARDUINO_ARCH_ESP8266)
-  sprintf(_generatedClientId, "esp8266-%06x", ESP.getChipId());
-#endif
-  _clientId = _generatedClientId;
-}
+PangolinMQTT::PangolinMQTT() { PANGO::LIN=this; }
 
 void PangolinMQTT::setCredentials(const char* username, const char* password) {
   _username = username;
@@ -87,10 +70,31 @@ void PangolinMQTT::setServer(const char* host, uint16_t port) {
   _host = host;
   _port = port;
 }
+//
+//
+//
+#if ASYNC_TCP_SSL_ENABLED
+
+void PangolinMQTT::serverFingerprint(const uint8_t* fingerprint) {
+    memcpy(_fingerprint, fingerprint, SHA1_SIZE);
+    PANGO::_secure=true;
+}
+
+#endif
+void PangolinMQTT::_destroyClient(){
+    if(PANGO::TCP) {
+        PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { }); // prevent recursion
+        delete PANGO::TCP; // causes a recurse!
+        PANGO::TCP=nullptr;
+    }
+}
+
+void PangolinMQTT::_hpDespatch(mb m){
+    if(_cbMessage) _cbMessage(m.topic.c_str(), m.payload, PANGO_PROPS_t {m.qos,m.dup,m.retain}, m.plen, 0, m.plen);
+}
 
 void PangolinMQTT::_onDisconnect(int8_t r) {
-    PANGO_PRINT("DISCONNECT FH=%u r=%d\n",ESP.getFreeHeap(),r);
-    PANGO::_clearQ(&PANGO::RXQ);
+    PANGO_PRINT("DISCONNECT FH=%u r=%d\n",PANGO::_HAL_getFreeHeap(),r);
     PANGO::_clearQ(&PANGO::TXQ);
     PANGO::_clearFragments();
     PANGO::_resetPingTimers();
@@ -100,13 +104,16 @@ void PangolinMQTT::_onDisconnect(int8_t r) {
     }
 }
 
-void PangolinMQTT::_hpDespatch(mb m){
-    if(_cbMessage) _cbMessage(m.topic.c_str(), m.payload, PANGO_PROPS_t {m.qos,m.dup,m.retain}, m.plen, 0, m.plen);
-}
-
 void PangolinMQTT::_notify(uint8_t e,int info){ 
     PANGO_PRINT("NOTIFY e=%d inf=%d\n",e,info);
     if(_cbError) _cbError(e,info);
+}
+
+void PangolinMQTT::_fatal(uint8_t e,int info){
+    if(_cbError) _cbError(e,info);
+    PANGO::TCP->close(true);
+    Serial.printf("FATAL ERROR %d INFO=%d - POWER CYCLE REQUIRED\n",e,info);
+    while(1) PANGO::_HAL_feedWatchdog();
 }
 
 void PangolinMQTT::_handlePublish(mb m){
@@ -114,11 +121,12 @@ void PangolinMQTT::_handlePublish(mb m){
 
 #ifdef PANGO_DEBUG
     if(m.topic=="PANGO"){
-        PANGO_PRINT("PANGO DEBUG TOPIC FH=%u\n",ESP.getFreeHeap());
+        PANGO_PRINT("PANGO DEBUG TOPIC FH=%u\n",PANGO::_HAL_getFreeHeap());
         debugHandler(m.payload,m.plen);
         return;
     }
 #endif
+
     switch(m.qos){
         case 1:
             {
@@ -160,17 +168,14 @@ void PangolinMQTT::_handlePacket(mb m){
 //    PANGO_PRINT("_handlePacket %s %08x len=%d id=%d, i=%08X\n",PANGO::getPktName(m.data[0]),m.data,m.len,id,i);
     switch (m.data[0]){
         case CONNACK:
-            if(i[1]) _onDisconnect(i[1]);
+            if(i[1]) _fatal(UNRECOVERABLE_CONNECT_FAIL,i[1]);
             else {
                 PANGO::dump();
                 PANGO::_space=PANGO::TCP->space();
                 bool session=i[0] & 0x01;
                 Serial.printf("\nSESSION IS %s\n",session ? "DIRTY":"CLEAN");
                 Packet::_resendPartialTxns();
-//                if(!session) _cleanStart();
-//                else {
-//                }
-                PANGO_PRINT("CONNECTED FH=%u SH=%u\n",ESP.getFreeHeap(),getMaxPayloadSize());
+                PANGO_PRINT("CONNECTED FH=%u SH=%u\n",PANGO::_HAL_getFreeHeap(),getMaxPayloadSize());
 #ifdef PANGO_DEBUG
 //              our own topic for debugging
                 PANGO_PRINT("Auto-subscribed to PANGO\n");
@@ -181,7 +186,7 @@ void PangolinMQTT::_handlePacket(mb m){
         case PINGRESP:
             break;
         case SUBACK:
-            if(i[2] & 0x80) _notify(SUBSCRIBE_FAIL,id);
+            if(i[2] & 0x80) _fatal(SUBSCRIBE_FAIL,id);
             else if(_cbSubscribe) _cbSubscribe(id,i[2]);
             break;
         case UNSUBACK:
@@ -197,7 +202,6 @@ void PangolinMQTT::_handlePacket(mb m){
 #ifdef PANGO_DEBUG
             }
 #endif
-            if(_cbPublish) _cbPublish(id);
             break;
         case PUBREC:
 #ifdef PANGO_DEBUG
@@ -214,7 +218,7 @@ void PangolinMQTT::_handlePacket(mb m){
 #ifdef PANGO_DEBUG
             }
 #endif
-            }//PANGO_PRINT("T=%u PUBREL %d\n",millis(),id); }
+            }
 #ifdef PANGO_DEBUG
             }
 #endif
@@ -228,11 +232,8 @@ void PangolinMQTT::_handlePacket(mb m){
                 if(Packet::_inbound.count(id)) {
                     _hpDespatch(Packet::_inbound[id]);
                     Packet::_ACK(&Packet::_inbound,id,true); // true = inbound
-                } else {
-//                    PANGO_PRINT("RECOMP OF ALREADY DELIVERED id=%d?\n",id);
-                    PANGO::LIN->_notify(INBOUND_QOS_ACK_FAIL,id);
-                }
-//
+                } else PANGO::LIN->_notify(INBOUND_QOS_ACK_FAIL,id);
+
 #ifdef PANGO_DEBUG
             if(OCOM) { PANGO_PRINT("BROKEN OUTBOUND PUBCOMP FOR QOS2 SESSION RECOVERY TESTING\n"); OCOM=false; }
             else {
@@ -242,7 +243,6 @@ void PangolinMQTT::_handlePacket(mb m){
             }
 #endif
 //
-//                } else _notify(INBOUND_QOS_FAIL,id); // id is pointless, but: what the hell?
             }
 #ifdef PANGO_DEBUG
             }
@@ -347,9 +347,7 @@ void PangolinMQTT::_onData(uint8_t* data, size_t len) {
     PANGO::_resetPingTimers();
     do {
         p=_packetReassembler(mb(data+len-p,p));
-#ifdef ARDUINO_ARCH_ESP8266
-        ESP.wdtFeed(); // move to fragment handler?
-#endif
+        PANGO::_HAL_feedWatchdog();
     } while (p < data + len);
 }
 
@@ -365,32 +363,58 @@ void PangolinMQTT::_onPoll(AsyncClient* client) {
         else {
             if(PANGO::_nPollTicks > _keepalive){
                 Packet::_resendPartialTxns();
-                //bool noPing=PANGO::TXQ.size() || PANGO::RXQ.size();
-                if(!(PANGO::TXQ.size() || PANGO::RXQ.size())) PingPacket pp{}; 
+                if(!(PANGO::TXQ.size())) PingPacket pp{}; 
             }
         }
     }
 }
 
 void PangolinMQTT::connect() {
-    if (PANGO::TCP) return;
-    PANGO_PRINT("CONNECT FH=%u\n",ESP.getFreeHeap());
+    if(PANGO::TCP) return;
+    if(_clientId=="") _clientId=PANGO::_HAL_getUniqueId();
+    PANGO_PRINT("CONNECT as %s FH=%u session=%d\n",_clientId.c_str(),PANGO::_HAL_getFreeHeap(),_cleanSession);
+    if(_cleanSession) _cleanStart();
     PANGO::TCP=new AsyncClient;
     PANGO::TCP->setNoDelay(true);
-    PANGO::TCP->onConnect([this](void* obj, AsyncClient* c) { ConnectPacket cp{}; }); // *NOT* A MEMORY LEAK! :)
+    PANGO::TCP->onConnect([this](void* obj, AsyncClient* c) { 
+
+#if ASYNC_TCP_SSL_ENABLED
+    if(PANGO::_secure) {
+        SSL* clientSsl = PANGO::TCP->getSSL();
+        if (ssl_match_fingerprint(clientSsl, _fingerprint) != SSL_OK) {
+            _fatal(TLS_BAD_FINGERPRINT);
+            return;
+        }
+    }
+#endif
+
+        ConnectPacket cp{};
+    }); // *NOT* A MEMORY LEAK! :)
     PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { PANGO_PRINT("TCP CHOPPED US!\n"); _onDisconnect(TCP_DISCONNECTED); });
     PANGO::TCP->onError([this](void* obj, AsyncClient* c,int error) { PANGO_PRINT("TCP_ERROR %d\n",error); _onDisconnect(error); });
     PANGO::TCP->onAck([this](void* obj, AsyncClient* c,size_t len, uint32_t time){ PANGO::_ackTCP(len,time); }); 
     PANGO::TCP->onData([this](void* obj, AsyncClient* c, void* data, size_t len) { _onData(static_cast<uint8_t*>(data), len); });
     PANGO::TCP->onPoll([this](void* obj, AsyncClient* c) { _onPoll(c); });
+// tidy this + whole _useIP bollocks
+#if ASYNC_TCP_SSL_ENABLED
+  if (_useIp) {
+    PANGO::TCP->connect(_ip, _port, PANGO::_secure);
+  } else {
+   PANGO::TCP->connect(_host.c_str(), _port, PANGO::_secure);
+  }
+#else
+  if (_useIp) {
+   PANGO::TCP->connect(_ip, _port);
+  } else {
+    PANGO::TCP->connect(_host.c_str(), _port);
+  }
+#endif
 
-    if (_useIp) PANGO::TCP->connect(_ip, _port);
-    else PANGO::TCP->connect(CSTR(_host), _port);
 }
 
 void PangolinMQTT::disconnect(bool force) {
-    if (!PANGO::TCP) return;
     PANGO_PRINT("USER DCX\n");
+    if (!PANGO::TCP) return;
     DisconnectPacket dp{};
 }
 
@@ -445,20 +469,7 @@ void PangolinMQTT::debugHandler(uint8_t* payload,size_t length){
         _onDisconnect(97);
     }
     else if(pl=="disco"){ _onDisconnect(99); }
-    else if(pl=="reboot"){ ESP.restart(); }
-    /*
-    else if(pl=="fix"){ 
-        IACK=false;
-        OACK=false;
-        IREC=false;
-        IREL=false;
-        ICOM=false;
-        OREC=false;
-        OREL=false;
-        OCOM=false;
-        PANGO_PRINT("\n\nFIX\n\n");
-    }
-    */
+//    else if(pl=="reboot"){ ESP.restart(); }
     else if(pl=="IACK"){ IACK=true; PANGO_PRINT("\n\nIACK\n\n"); }
     else if(pl=="OACK"){ OACK=true; PANGO_PRINT("\n\nOACK\n\n"); }
     else if(pl=="IREC"){ IREC=true; PANGO_PRINT("\n\nIREC\n\n"); }

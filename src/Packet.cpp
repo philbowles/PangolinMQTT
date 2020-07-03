@@ -86,23 +86,6 @@ void Packet::_resendPartialTxns(){
                 m.data[0]|=0x08; // set dup & resend
                 PANGO::_txPacket(m);
             }
-            /*
-            if(m.qos==1){
-                PANGO_PRINT("DUPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP ATTEMPT QOS1: resend %d as DUP\n",m.id);
-                m.data[0]|=0x08; // set dup & resend
-                PANGO::_txPacket(m);
-            }
-            else  {
-                if(m.pubrec) {
-                }
-                else {
-                    PANGO_PRINT("QOS 2 id=%d NOT PUBREC'D - RESEND \n",m.id);
-//                    Packet::ACKoutbound(m.id);
-                    m.data[0]|=0x08; // set dup & resend
-                    PANGO::_txPacket(m);
-                }
-            }
-            */
         }
         else {
             PANGO_PRINT("NO JOY AFTER %d ATTEMPTS: QOS FAIL\n",PANGO::_maxRetries);
@@ -162,7 +145,7 @@ ConnectPacket::ConnectPacket(): Packet(CONNECT,10){
         if(PangolinMQTT::_cleanSession) protocol[7]|=CLEAN_SESSION;
         if(PangolinMQTT::_willRetain) protocol[7]|=WILL_RETAIN;
         if(PangolinMQTT::_willQos) protocol[7]|=(PangolinMQTT::_willQos==1) ? WILL_QOS1:WILL_QOS2;
-        uint8_t* pClientId=_stringblock(PangolinMQTT::_clientId);
+        uint8_t* pClientId=_stringblock(PANGO::LIN->_clientId);
         if(PangolinMQTT::_willTopic.size()){
             _stringblock(PangolinMQTT::_willTopic);
             _stringblock(PangolinMQTT::_willPayload);

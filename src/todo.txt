@@ -1,6 +1,8 @@
 SOONEST:
+    docs: moz.conf persistent
 SOON:
     TLS
+    debug levels
 MEDIUM-TERM:
     change blox to mb 
     unfactor _rl

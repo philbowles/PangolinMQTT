@@ -40,22 +40,30 @@ namespace PANGO {
     extern  PANGO_MSG_Q      TXQ;
     extern  PANGO_MSG_Q      RXQ;
     extern  PANGO_FRAGMENTS  _fragments;
+//    extern  bool             _inflight;
     extern  uint16_t         _maxRetries;
     extern  uint32_t         _nPollTicks;
     extern  uint32_t         _nSrvTicks;
+    extern  bool             _secure;
     extern  size_t           _space;
 //
 //  NEVER call anything that stats with underscore! "_"
 //
+    extern void             _HAL_feedWatchdog();
+    extern uint32_t         _HAL_getFreeHeap();
+    extern const char*      _HAL_getUniqueId();
+
+    extern size_t           _ackSize(size_t N);
+
     extern void             _ackTCP(size_t len, uint32_t time);
     extern void             _clearFragments();
     extern void             _clearQ(PANGO_MSG_Q*);
     extern PANGO_REM_LENGTH _getRemainingLength(uint8_t* p);
     extern uint16_t         _peek16(uint8_t* p);
     extern void             _resetPingTimers();
-    extern void             _runRXQ();
+//    extern void             _runRXQ();
     extern void             _runTXQ();
-    extern void             _rxPacket(mb);
+//    extern void             _rxPacket(mb);
     extern void             _saveFragment(mb);
     extern void             _send(mb);
     extern void             _txPacket(mb);

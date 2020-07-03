@@ -41,6 +41,11 @@ SOFTWARE.
 #error Platform not supported
 #endif
 
+#if ASYNC_TCP_SSL_ENABLED
+#include <tcp_axtls.h>
+#define SHA1_SIZE 20
+#endif
+
 #define CSTR(x) x.c_str()
 enum :uint8_t {
     CONNECT     = 0x10, // x
@@ -60,6 +65,11 @@ enum :uint8_t {
 };
 
 enum PANGO_FAILURE : uint8_t {
+    TCP_DISCONNECTED,
+    MQTT_SERVER_UNAVAILABLE,
+    UNRECOVERABLE_CONNECT_FAIL,
+    TLS_BAD_FINGERPRINT,
+    TCP_TIMEOUT,
     SUBSCRIBE_FAIL,
     INBOUND_QOS_FAIL,
     OUTBOUND_QOS_FAIL,
@@ -71,17 +81,6 @@ enum PANGO_FAILURE : uint8_t {
     BOGUS_ACK
 };
 
-enum : int8_t {
-  TCP_DISCONNECTED = 0,
-//  MQTT_UNACCEPTABLE_PROTOCOL_VERSION = 1,
-  MQTT_IDENTIFIER_REJECTED = 2,
-  MQTT_SERVER_UNAVAILABLE = 3,
-  MQTT_MALFORMED_CREDENTIALS = 4,
-  MQTT_NOT_AUTHORIZED = 5,
-//  ESP8266_NOT_ENOUGH_SPACE = 6,
-  TLS_BAD_FINGERPRINT = 7,
-  TCP_TIMEOUT,
-};
 struct PANGO_PROPS {
   uint8_t qos;
   bool dup;
@@ -171,10 +170,11 @@ class PangolinMQTT {
                PANGO_cbPublish      _cbPublish=nullptr;
                PANGO_cbSubscribe    _cbSubscribe=nullptr;
                PANGO_cbUnsubscribe  _cbUnsubscribe=nullptr;
-
+#if ASYNC_TCP_SSL_ENABLED
+               uint8_t             _fingerprint[SHA1_SIZE];
+#endif
         static bool                _cleanSession;
-        static std::string         _clientId;
-               char                _generatedClientId[19]; 
+               std::string         _clientId;
                std::string         _host;
                IPAddress           _ip;
         static uint16_t            _keepalive;
@@ -205,7 +205,7 @@ class PangolinMQTT {
                 bool                connected(){ return PANGO::TCP; };
                 void                disconnect(bool force = false);
                 const char*         getClientId(){ return _clientId.c_str(); }
-                size_t inline       getMaxPayloadSize(){ return (ESP.getFreeHeap() / 2) - PANGO_HEAP_SAFETY; }
+                size_t inline       getMaxPayloadSize(){ return (PANGO::_HAL_getFreeHeap() / 2) - PANGO_HEAP_SAFETY; }
                 void                onConnect(PANGO_cbConnect callback){ _cbConnect=callback; }
                 void                onDisconnect(PANGO_cbDisconnect callback){ _cbDisconnect=callback; }
                 void                onError(PANGO_cbError callback){ _cbError=callback; }
@@ -216,19 +216,27 @@ class PangolinMQTT {
                 uint16_t            publish(const char* topic, uint8_t qos, bool retain, uint8_t* payload, size_t length, bool dup); // <- stupid!!!
                 void                publish(const char* topic, uint8_t qos, bool retain, std::string payload){ publish(topic,qos,retain, (uint8_t*) payload.data(), (size_t) payload.size(),false); }
                 void                publish(const char* topic, uint8_t qos, bool retain, String payload){ publish(topic,qos,retain, (uint8_t*) payload.c_str(), (size_t) payload.length(),false); }
-                void                setCleanSession(bool cleanSession){ _cleanSession = cleanSession; if(cleanSession) _cleanStart(); }
+                void                setCleanSession(bool cleanSession){ _cleanSession = cleanSession; }
                 void                setClientId(const char* clientId){ _clientId = clientId; }
                 void                setCredentials(const char* username, const char* password = nullptr);
                 void                setKeepAlive(uint16_t keepAlive){ _keepalive = PANGO_POLL_RATE * keepAlive; }
-//                void                setMaxRetries(uint16_t nRetries){ PANGO::_maxRetries=nRetries; };
                 void                setServer(IPAddress ip, uint16_t port);
                 void                setServer(const char* host, uint16_t port);
                 void                setWill(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr);
                 uint16_t            subscribe(const char* topic, uint8_t qos);
                 uint16_t            unsubscribe(const char* topic);
 //
+//
+//
+#if ASYNC_TCP_SSL_ENABLED
+//                void                setSecure(bool secure){ _secure=secure; }
+                void                serverFingerprint(const uint8_t* fingerprint);
+#endif
+
+//
 //              DO NOT CALL ANY FUNCTION STARTING WITH UNDERSCORE!!! _
 //
                 void                _handlePacket(mb);
-                void                _notify(uint8_t e,int info);
+                void                _fatal(uint8_t e,int info=0);
+                void                _notify(uint8_t e,int info=0);
 };

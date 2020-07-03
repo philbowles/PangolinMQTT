@@ -77,7 +77,7 @@ void mb::ack(){
 void mb::clear(){
     if(managed){
         if(pool.count(data)) {
- //           PANGO_PRINT("*********************************** FH=%u KILL POOL %08X %d remaining\n\n",ESP.getFreeHeap(),data,pool.size());
+ //           PANGO_PRINT("*********************************** FH=%u KILL POOL %08X %d remaining\n\n",PANGO::_HAL_getFreeHeap()),data,pool.size());
             if(data){
                 free(data);
                 pool.erase(data);
@@ -91,7 +91,7 @@ void mb::manage(){
 //    PANGO_PRINT("MANAGE %08X\n",data);
     if(managed){
         if(!pool.count(data)) {
-//            PANGO_PRINT("\n*********************************** FH=%u INTO POOL %08X TYPE %s len=%d IN Q %u\n",ESP.getFreeHeap(),data,PANGO::getPktName(data[0]),len,pool.size());
+//            PANGO_PRINT("\n*********************************** FH=%u INTO POOL %08X TYPE %s len=%d IN Q %u\n",PANGO::_HAL_getFreeHeap()),data,PANGO::getPktName(data[0]),len,pool.size());
             pool.insert(data);
 //            dump();
         } //else PANGO_PRINT("\n* NOT ***************************** INTO POOL %08X %d IN Q\n",p,pool.size());

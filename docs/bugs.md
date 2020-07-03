@@ -173,7 +173,7 @@ Except of course in the "lucky" cases where no particularly troublesome combinat
 
 ## QoS 1/2 Protocol Violation - no message resend
 
-TOL makes no attempt whatsover to conform with MQTT-4.4.0-1 and resend failed QoS1 and/or 2 transactions on reconnect:
+AsyncMqttClient makes no attempt whatsover to conform with MQTT-4.4.0-1 and resend failed QoS1 and/or 2 transactions on reconnect:
 
 
 ![pv2mqtt](../assets/pv2mqtt.jpg)
