@@ -11,6 +11,7 @@ PANGO	KEYWORD1
 
 setKeepAlive	KEYWORD2
 setClientId	KEYWORD2
+getClientId	KEYWORD2
 setCleanSession	KEYWORD2
 setCredentials	KEYWORD2
 setWill	KEYWORD2
@@ -35,6 +36,7 @@ payloadToStdstring	KEYWORD2
 payloadToString	KEYWORD2
 getMaxPayloadSize	KEYWORD2
 onError	KEYWORD2
+serverFingerprint	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)

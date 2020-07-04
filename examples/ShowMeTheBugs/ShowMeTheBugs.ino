@@ -7,6 +7,7 @@
  * using AsyncMqttClient to allow you to compare results / performance
  */
 #define USE_PANGOLIN
+//#define USE_TLS
 //
 //    Common to all sketches: necssary infrastructure
 //
@@ -14,7 +15,13 @@
 #define WIFI_PASSWORD "XXXXXXXX"
 
 #define MQTT_HOST IPAddress(192, 168, 1, 21)
+
+#ifdef USE_TLS
+#define MQTT_PORT 8883
+const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,0xb1,0xa5,0x97,0xba,0x65,0x8c,0x20,0x5a,0x9c,0xfa };
+#else
 #define MQTT_PORT 1883
+#endif
 //
 //  Some sketches will require you to set START_WITH_CLEAN_SESSION to false
 //  For THIS sketch, leave it at true
@@ -48,10 +55,10 @@ extern std::string uTopic(std::string t); // automatically prefixes the topic wi
 //  publish("Pavg0",50...   = (4500 - 4000) / 10
 //  
 //  Default/initial values: FIX!!!
-#define QOS                  2
+#define QOS                  0
 #define PAYLOAD_SIZE       100
-#define BURST_SIZE           1
-#define TRANSMIT_RATE    10000
+#define BURST_SIZE           4
+#define TRANSMIT_RATE     5000
 #define HEARTBEAT           10
 
 // NB RATE IS IN MILLISECONDS!!!!
@@ -174,7 +181,7 @@ void unifiedMqttConnect() {
   unifiedSubscribe(tofTopic.c_str(),ctrlQos); // T-O-F topic @ chosen QoS   
   
   showValues();
-  //startClock();
+  startClock();
 }
 
 void unifiedMqttDisconnect(int8_t reason) {
@@ -184,22 +191,22 @@ void unifiedMqttDisconnect(int8_t reason) {
 
 void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool dup, bool retain, size_t len, size_t index, size_t total) {
   if(topic=="qos"){
-    uint8_t newqos=payloadToInt(payload,len); 
+    uint8_t newqos=PANGO::payloadToInt(payload,len); 
     if(newqos < 3) changeValues(newqos,ctrlRate,ctrlSize,ctrlBurst);
     else Serial.printf("ERROR! Cannot change to QoS%d!!!\n",newqos);
   }
   else if(topic=="rate") {
-    uint32_t newrate=payloadToInt(payload,len); 
+    uint32_t newrate=PANGO::payloadToInt(payload,len); 
     if(newrate > 125 && newrate < 10000) changeValues(ctrlQos,newrate,ctrlSize,ctrlBurst); // arbitrary "sensible" values
     else Serial.printf("ERROR! Rate shuld be between 125 and 10000 (0.125s and 10s) %d is not!!!\n",newrate);
   }
   else if(topic=="size") {
-    uint32_t newsize=payloadToInt(payload,len); 
+    uint32_t newsize=PANGO::payloadToInt(payload,len); 
     if(newsize > 16) changeValues(ctrlQos, ctrlRate,newsize,ctrlBurst);  // at least a string value of a massive integer + some safety
     else Serial.printf("ERROR! Payload size %d is too small!!!\n",newsize);
   }
   else if(topic=="burst") {
-    uint32_t newburst=payloadToInt(payload,len); 
+    uint32_t newburst=PANGO::payloadToInt(payload,len); 
     if(newburst > 0 && newburst < 20) changeValues(ctrlQos, ctrlRate,ctrlSize,newburst);  // limited by mosquitto in-flight Q size
     else Serial.printf("ERROR! Burst size %d is too small!!!\n",newburst);
   }
@@ -217,7 +224,7 @@ void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool d
     if(len!=ctrlSize){
       Serial.printf("FRAGMENT FAILURE! Only %d bytes received out of %d\n",len,ctrlSize);
       Serial.printf("Cannot continue without adding packet reassembly code :(\n",len,ctrlSize);
-      dumphex(payload,len);
+      PANGO::dumphex(payload,len);
       stopClock();
       return;
     }

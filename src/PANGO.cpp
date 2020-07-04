@@ -41,7 +41,7 @@ namespace PANGO {
             uint32_t            _HAL_getFreeHeap();
             const char*         _HAL_getUniqueId();
 
-            size_t              _ackSize(size_t N);
+//            size_t              _ackSize(size_t N);
 
             void                _ackTCP(size_t len, uint32_t time);
             void                _clearFragments();
@@ -55,7 +55,6 @@ namespace PANGO {
             void                _send(mb);
             void                _txPacket(mb);
 //
-            void                dump(); // null if no PANGO_DEBUG
             void                dumphex(uint8_t* mem, size_t len,uint8_t W);
             char*               payloadToCstring(uint8_t* data,size_t len);
             int                 payloadToInt(uint8_t* data,size_t len);
@@ -78,7 +77,8 @@ namespace PANGO {
                 {0xd0,"PINGRESP"},
                 {0xe0,"DISCONNECT"}
             };
-            char*         getPktName(uint8_t type){
+            void            dump(); // null if no PANGO_DEBUG
+            char*           getPktName(uint8_t type){
                 uint8_t t=type&0xf0;
                 if(pktnames.count(t)) return pktnames[t];
                 else{
@@ -118,21 +118,17 @@ const char* PANGO::_HAL_getUniqueId(){
     return buf;
 }
 #endif
-size_t PANGO::_ackSize(size_t N){
-    if(_secure) return 69+((N/16)*16);
-    return N;
-}
+
 void PANGO::_ackTCP(size_t len, uint32_t time){
-//    PANGO_PRINT("TXQ=%d TCP ACK LENGTH=%d\n",TXQ.size(),len);
-//    _inflight=false;
+    PANGO_PRINT("TXQ=%d TCP ACK LENGTH=%d\n",TXQ.size(),len);
     _resetPingTimers();
     size_t amtToAck=len;
     while(amtToAck){
         if(!TXQ.empty()){
             mb tmp=TXQ.front();
             TXQ.pop();
-//            PANGO_PRINT("TXQ=%d TCP frag ACK LENGTH=%d acksize=%d amtleft=%d\n",TXQ.size(),tmp.len,_ackSize(tmp.len),amtToAck);
-            amtToAck-=_ackSize(tmp.len);
+            PANGO_PRINT("TXQ=%d TCP frag ACK LENGTH=%d acksize=%d amtleft=%d\n",TXQ.size(),tmp.len,69+((tmp.len>>4)<<4),amtToAck);
+            amtToAck-=_secure ? 69+((tmp.len>>4)<<4):tmp.len;//_ackSize(tmp.len);
             tmp.ack();
         } else break;
     }
@@ -199,7 +195,6 @@ void PANGO::_send(mb m){
 }
 
 void  PANGO::_txPacket(mb m){
-    PANGO::dump();
     TXQ.push(m);
     if(TXQ.size()==1) _release(m);
 }
@@ -225,10 +220,9 @@ void PANGO::dumphex(uint8_t* mem, size_t len,uint8_t W) {
 }
 
 char* PANGO::payloadToCstring(uint8_t* data,size_t len){
-    char* buf=static_cast<char*>(malloc(len+1)); /// CALLER MUST FREE THIS!!!
-    while(*buf++=(char)(*data++));
-    buf[len]='\0';
-    return buf;
+    uint8_t* buf=static_cast<uint8_t*>(malloc(len)); /// CALLER MUST FREE THIS!!!
+    memcpy(buf,data,len);
+    return (char*) buf;
 };
 
 int PANGO::payloadToInt(uint8_t* data,size_t len){
@@ -237,6 +231,7 @@ int PANGO::payloadToInt(uint8_t* data,size_t len){
     free(c); // as all goood programmers MUST!
     return i;
 }
+
 std::string PANGO::payloadToStdstring(uint8_t* data,size_t len){
     char* c=payloadToCstring(data,len);
     std::string s;
@@ -244,6 +239,7 @@ std::string PANGO::payloadToStdstring(uint8_t* data,size_t len){
     free(c); // as all goood programmers MUST!
     return s;
 }
+
 String PANGO::payloadToString(uint8_t* data,size_t len){
     return String(payloadToStdstring(data,len).c_str());
 }
@@ -273,6 +269,4 @@ void PANGO::dump(){
 
     PANGO_PRINT("\n");
 }
-#else
-void PANGO::dump(){}
 #endif

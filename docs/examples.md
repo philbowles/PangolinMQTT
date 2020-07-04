@@ -70,10 +70,10 @@ Both these sketches are based on very similar code with minor differences for Qo
 
 ### Theory of the code
 
-The code for both sends and receives a message with an ever-increasing integer as the payload. It then randomly disconnects 5% of the time after each send. On reconnection At QoS1 (where duplicates are allowed) it will count the number of duplicates re-sent. Any duplicate at QoS2 is a breach of the MQTT protocol.
+The code for both sends and receives a message with an ever-increasing integer as the payload. It then randomly disconnects 5% of the time after each send. On reconnection at QoS1 (where duplicates are allowed) it will count the number of duplicates re-sent. Any duplicate at QoS2 is a breach of the MQTT protocol.
 
 When compiled using the Pangolin library, both sketches will record the receipt of every single value sent in ascending order *at least once* t QoS1 and *exactly once* at QoS2 as required by the MQTT protocol.
 
-On the other hand, when running the sketches with the AsyncMqttClient library, bith will fail to deliver messages, thereby a) breaching the MQTT protocol and b) proving that AsyncMqttClient ***simply does not work at either QoS1 or QoS2***
+On the other hand, when running the sketches with the AsyncMqttClient library, both will fail to deliver messages, thereby a) breaching the MQTT protocol and b) proving that AsyncMqttClient ***simply does not work at either QoS1 or QoS2***
 
 More details (and many other bugs) can be seen in the [bugs documentation](bugs.md)

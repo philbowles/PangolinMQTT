@@ -1,291 +1,130 @@
-#ifdef ARDUINO_ARCH_ESP32
-#include <WiFi.h>
-#else
-#include <ESP8266WiFi.h>
-#endif
-#include <Ticker.h>
-/*
- * This file "irons out" the differences between Pangolin API and AsncMqttClient API
- * and hides the incorrcet and illogal parametrs of the latter from the user
- * 
- * It provides:
- * 
- * a) A common "framework" to connect / disconnect to wifi / mqtt
- * b) A selection fo utility functions to reduce user effort and allow
- *    simple payload handling in the main sketch, irrespective of content type
- * b) a unified API that works with either lib so that the main code in the sketch 
- *    will compile cleanly for either library
- *    
- * It also hides all the "machinery" so that the porpuse and intent of the main sketch
- * is clear and obvious as it is reduced to two simple functions:
- * 
- *  unifiedMqttConnect  when mqtt connects, in whch the user should then...
- *    unifiedSubscribe( topic , qos); // as per usua: sme parameters as "normal" subscribe
- *    
- *  unifiedMqttMesage to handle incoming messages in the same wasy as the "normal" onMqttConnect
- *    (but with correct data types and less BS)
+/*                                 
+ *  QoS2 guarantees to deliver meesages EXACTLY ONCE so if QoS2      
+ *  works, we will get back every message we sent, 1:1 any gaps in the
+ *  gaps in the sequence mean that QoS2 is broken.
  *  
- *  at any point, user can call unifiedPublish with similar parameters to the original,
- *    (but with correct data types and less BS)
- *    
- *  Finally for anyskecth that need to set global variables of timers etc, there is
+ *  Warning: if you send messages fatser than MQTT can acknowledge them,
+ *  they may come back out-of-sequence, but as long as MQTT can keep up 
+ *  ON AVERAGE then you will still always get them all. 
  *  
- *  unifiedSetup
- *  
+ *                     
+ * PLEASE READ THE NOTES ON THIS SKETCH FIRST AT
+ * 
+ * https://github.com/philbowles/Pangolin/
+ * 
+ * If you remove the following line, this sketch will compile 
+ * using AsyncMqttClient to allow you to compare results / performance
  */
-#ifdef USE_PANGOLIN
-  #define LIBRARY "Pangolin v0.0.7"
-  #pragma message("Compiling for Pangolin")
-  #include <PangolinMQTT.h> 
-  PangolinMQTT mqttClient;
+#define USE_PANGOLIN
+//#define USE_TLS
+
+#include<set>
+//
+//    Common to all sketches: necssary infrastructure
+//
+#define WIFI_SSID "XXXXXXXX"
+#define WIFI_PASSWORD "XXXXXXXX"
+
+#define MQTT_HOST IPAddress(192, 168, 1, 21)
+
+#ifdef USE_TLS
+#define MQTT_PORT 8883
+const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,0xb1,0xa5,0x97,0xba,0x65,0x8c,0x20,0x5a,0x9c,0xfa };
 #else
-  #define LIBRARY "AsyncMqttClient v0.8.2"
-  #pragma message("Compiling for AsyncMqttClient")
-  #include <AsyncMqttClient.h> 
-  AsyncMqttClient mqttClient;
+#define MQTT_PORT 1883
 #endif
+//
+//  Some sketches will require you to set START_WITH_CLEAN_SESSION to false
+//  For THIS sketch, leave it at false
+//
+#define START_WITH_CLEAN_SESSION   false
 
-#define RECONNECT_DELAY_M   5
-#define RECONNECT_DELAY_W   5
+#include "options.h"
+//
+// unified functions that "smooth out" the minor API differences between the libs 
+//
+extern void unifiedPublish(std::string,uint8_t,bool,uint8_t*,size_t);
+extern void unifiedSubscribe(std::string,uint8_t);
+extern void unifiedUnubscribe(std::string);
+// function to automatically add A or P prefix to a topic
+extern std::string uTopic(std::string t); // automatically prefixes the topic with "A" or "P"
+//
+//  The actual logic of the THIS sketch
+//
+//  
+//  Default/initial values: FIX!!!
+#define QOS                 2
+#define TRANSMIT_RATE    1000
+#define HEARTBEAT           7
+// NB RATE IS IN MILLISECONDS!!!!
+//
+std::string seqTopic=uTopic("sequence"); // the out-and-back message
 
-uint32_t  nRCX=0;
+uint32_t  sequence=0;
+bool      bursting=false; // send clock interlock
 
-std::string lib(LIBRARY);
-std::string prefix(lib.begin(),++lib.begin());
+std::set<uint32_t> sent;
+uint32_t sentThisSession=0;
 
-Ticker mqttReconnectTimer,wifiReconnectTimer,PT1,PPT2,PT3;
-void connectToMqtt() {
-  Serial.println("Connecting to MQTT...");
-  mqttClient.connect();
+void sendNextInSequence(){
+  char buf[16];
+  sprintf(buf,"%d",++sequence);
+  sent.insert(sequence);
+  ++sentThisSession;
+  unifiedPublish(seqTopic.c_str(), QOS, false, (uint8_t*) buf, strlen(buf)+1);
+  if(random(0,100) > 95) {
+    Serial.printf("DELIBERATE RANDOM DISCONNECT TO TEST QOS!!!\n");
+    mqttClient.disconnect(); 
+  }
+  Serial.printf("SENT %s (thisSession=%d)\n",buf,sentThisSession);
 }
-void connectToWifi() {
-//  WiFi.printDiag(Serial);
-  Serial.printf("Connecting to Wi-Fi... SSID=%s\n",WIFI_SSID);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+void startClock(){
+  if(!bursting) PT2.attach_ms(TRANSMIT_RATE,sendNextInSequence);
+  else Serial.printf("Clock Already running!\n");
+  bursting=true;
+}
+void stopClock(){
+  if(bursting) PT2.detach();
+  else Serial.printf("Clock Already stopped!\n");
+  bursting=false;
 }
 
-#ifdef ARDUINO_ARCH_ESP32
-void WiFiEvent(WiFiEvent_t event) {
-    Serial.printf("[WiFi-event] event: %d\n", event);
-    switch(event) {
-    case SYSTEM_EVENT_STA_GOT_IP:
-        Serial.println("WiFi connected");
-        Serial.println("IP address: ");
-        Serial.println(WiFi.localIP());
-        connectToMqtt();
-        break;
-    case SYSTEM_EVENT_STA_DISCONNECTED:
-        Serial.println("WiFi lost connection");
-        mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
-        wifiReconnectTimer.once(RECONNECT_DELAY_W, connectToWifi);
-        break;
+void unifiedMqttConnect() {
+  unifiedSubscribe(seqTopic.c_str(),QOS); // T-O-F topic @ chosen QoS   
+  startClock();
+}
+
+void unifiedMqttDisconnect(int8_t reason) {
+  Serial.printf("USER: Disconnect reason=%d\n",reason);
+  sentThisSession=0;
+  stopClock();
+}
+
+void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool dup, bool retain, size_t len, size_t index, size_t total) {
+//    Serial.printf("unifiedMqttMessage %s len=%d\n",topic.c_str(),len);
+//    PANGO::dumphex(payload,len);
+    uint32_t R=PANGO::payloadToInt(payload,len);
+    if(!sentThisSession){
+      Serial.printf("***** QoS2 recovery in action! *****\n");
+      Serial.printf("We have not yet sent any messages, but %d just came in!\n",R);
     }
+    Serial.printf("RCVD %u\n",R);
+    if(dup) {
+        Serial.printf("QOS2 FAIL!!! DUPLICATE VALUE RECEIVED %d\n",R);
+        stopClock();
+        PT1.detach();
+    }
+    sent.erase(R);
 }
-#else
-WiFiEventHandler wifiConnectHandler;
-WiFiEventHandler wifiDisconnectHandler;
-#endif
-
-extern void unifiedSetup();
-extern void unifiedMqttConnect();
-extern void unifiedMqttMessage(std::string,uint8_t*,uint8_t,bool,bool,size_t,size_t,size_t);
-extern void unifiedMqttDisconnect(int8_t);
-
-void unifiedSubscribe(std::string topic,uint8_t qos){ 
-  Serial.printf("unifiedSubscribe %s @ QoS%d\n",topic.c_str(),qos);
-  mqttClient.subscribe(topic.c_str(),qos);
-}
-
-void unifiedPublish(std::string t,uint8_t q,bool r,uint8_t* p,size_t l){
-#ifdef USE_PANGOLIN
-  mqttClient.publish(t.c_str(),q,r,p,l,false); 
-#else
-  mqttClient.publish(t.c_str(),q,r,(char*) p,l); 
-#endif
-}
-void unifiedUnsubscribe(std::string topic){ mqttClient.unsubscribe(topic.c_str()); }
-
-std::string uTopic(std::string t){ return (prefix+t); } // automatically prefixes the topic with "A" or "P"
-
-void onMqttConnect(bool sessionPresent) {
-  nRCX++;
-#ifdef USE_PANGOLIN
-  Serial.printf("Connected to MQTT: Session=%d Max safe payload %u\n",sessionPresent,mqttClient.getMaxPayloadSize());
-#else
-  Serial.printf("Connected to MQTT: Session=%d FIXED\n",sessionPresent);
-#endif
-  unifiedMqttConnect();
-} 
-/* 
- *  utility functions missing from AsyncMqttClient but present in Pangolin
- *  extracted from PANGO:: namespace and reproduced here as static globals 
- *  so AsyncMqttClient examples can use identical code
- *  
- */
-char* payloadToCstring(uint8_t* data,size_t len){
-    char* buf=static_cast<char*>(malloc(len+1)); /// CALLER MUST FREE THIS!!!
-    memcpy(buf,data,len);
-    buf[len]='\0';
-    return buf;
-};
-
-int payloadToInt(uint8_t* data,size_t len){
-    char* c=payloadToCstring(data,len);
-    int i=atoi(c);
-    free(c); // as all goood programmers MUST!
-    return i;
-}
-std::string payloadToStdstring(uint8_t* data,size_t len){
-    char* c=payloadToCstring(data,len);
-    std::string s;
-    s.assign(c,len);
-    free(c); // as all goood programmers MUST!
-    return s;
-}
-const char* cstringFromInt(int i){
-  static char buf[32]; // lazy but safe
-  sprintf(buf,"%d",i);
-  return buf;
-}
-void dumphex(uint8_t* mem, size_t len,uint8_t W=16) {
-    uint8_t* src = mem;
-    Serial.printf("Address: 0x%08X len: 0x%X (%d)", (ptrdiff_t)src, len, len);
-    for(uint32_t i = 0; i < len; i++) {
-        if(i % W == 0) Serial.printf("\n[0x%08X] 0x%08X: ", (ptrdiff_t)src, i);
-        Serial.printf("%02X ", *src);
-        src++;
-        //
-        if(i % W == W-1 || src==mem+len){
-            size_t ff=W-((src-mem) % W);
-            for(int p=0;p<(ff % W);p++) Serial.print("   ");
-            Serial.print("  "); // stretch this for nice alignment of final fragment
-            for(uint8_t* j=src-(W-(ff%W));j<src;j++) Serial.printf("%c", isprint(*j) ? *j:'.');
+// set qos topic names and start HB ticker
+void unifiedSetup(){
+    PT1.attach(HEARTBEAT,[]{
+        Serial.printf("Heartbeat: Heap=%u seq=%d number of reconnects=%d\n",ESP.getFreeHeap(),sequence,nRCX);
+        Serial.printf("No. Incomplete send/rcv pairs=%d\n",sent.size());
+        if(sent.size()){
+            for(auto const& s:sent) Serial.printf("%d,",s);
+            Serial.println();
         }
-    }
-    Serial.println();
+      });
 }
-// end utils
-#ifdef USE_PANGOLIN
-/*
-    Necessary error handling absent in asyncMqttClient
-*/
-void onMqttError(uint8_t e,uint32_t info){
-  switch(e){
-    case SUBSCRIBE_FAIL:
-      Serial.printf("ERROR: SUBSCRIBE_FAIL info=%d\n",info);
-      break;
-    case INBOUND_QOS_FAIL:
-      Serial.printf("ERROR: INBOUND_QOS_FAIL id=%d\n",info);
-      break;
-    case INBOUND_QOS_ACK_FAIL:
-      Serial.printf("ERROR: OUTBOUND_QOS_ACK_FAIL id=%d\n",info);
-      break;
-    case OUTBOUND_QOS_FAIL:
-      Serial.printf("ERROR: OUTBOUND_QOS_FAIL id=%d\n",info);
-      break;
-    case OUTBOUND_QOS_ACK_FAIL:
-      Serial.printf("ERROR: OUTBOUND_QOS_ACK_FAIL id=%d\n",info);
-      break;
-    case INBOUND_PUB_TOO_BIG:
-      Serial.printf("ERROR: INBOUND_PUB_TOO_BIG size=%d Max=%d\n",e,mqttClient.getMaxPayloadSize());
-      break;
-    case OUTBOUND_PUB_TOO_BIG:
-      Serial.printf("ERROR: OUTBOUND_PUB_TOO_BIG size=%d Max=%d\n",e,mqttClient.getMaxPayloadSize());
-      break;
-    // The BOGUS_xxx messages are 99.99% unlikely to ever happen, but this message is better than a crash, non? 
-    case BOGUS_PACKET: //  Your server sent a control packet type unknown to MQTT 3.1.1 
-      Serial.printf("ERROR: BOGUS_PACKET TYPE=%02x\n",e,info);
-      break;
-    case BOGUS_ACK: // TCP sent an ACK for a packet that we don't remember sending!
-    // Only possible causes are: 1) Bug in this lib 2) Bug in ESPAsyncTCP lib 3) Bug in LwIP 4) Your noisy network 
-    // is SNAFU 5) Subscribing to an invalid name in onMqttConnect
-    // Either way, it's pretty fatal, so expect "interesting" results after THIS happens (it won't)
-      Serial.printf("ERROR: BOGUS_ACK TCP length=%\n",info);
-      break;
-    default:
-      Serial.printf("UNKNOWN ERROR: %u extra info %d",e,info);
-      break;
-  }
-}
-// end error-handling
-#endif
-
-#ifdef ARDUINO_ARCH_ESP8266
-void onWifiConnect(const WiFiEventStationModeGotIP& event) {
-  Serial.println("Connected to Wi-Fi.");
-  connectToMqtt();
-}
-void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
-  Serial.printf("Disconnected from Wi-Fi event=%d",event.reason);
-  mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
-  wifiReconnectTimer.once(RECONNECT_DELAY_W, connectToWifi);
-}
-#endif
-
-#ifdef USE_PANGOLIN
-void onMqttDisconnect(int8_t reason) {
-#else
-void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
-#endif
-  Serial.printf("Disconnected from MQTT reason=%d\n",reason);
-  if (WiFi.isConnected()) {
-    mqttReconnectTimer.once(RECONNECT_DELAY_M, connectToMqtt);
-  }
-  unifiedMqttDisconnect((int8_t) reason);
-}
-#ifdef USE_PANGOLIN
-void onMqttMessage(const char* top,uint8_t* p,struct PANGO_PROPS pp,size_t l,size_t i,size_t tot){
-  unifiedMqttMessage(std::string(top),p,pp.qos,pp.dup,pp.retain,l,i,tot);
-}
-#else
-void onMqttMessage(char* top, char* p, AsyncMqttClientMessageProperties pp, size_t l, size_t i, size_t tot) {
-  unifiedMqttMessage(std::string(top),(uint8_t*)p,pp.qos,pp.dup,pp.retain,l,i,tot);  
-}
-#endif
-
-void setup() {
-  Serial.begin(115200);
-  Serial.println();
-  Serial.printf("%s Starting heap=%u\n",LIBRARY,ESP.getFreeHeap());
-
-  WiFi.disconnect();
-  WiFi.mode(WIFI_STA);
-  
-#ifdef ARDUINO_ARCH_ESP32
-  WiFi.onEvent(WiFiEvent);
-#else
-  wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
-  wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
-#endif
-
-  mqttClient.onConnect(onMqttConnect);
-  mqttClient.onDisconnect(onMqttDisconnect);
-  mqttClient.onMessage(onMqttMessage);
-  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-  //DIFFERENT TO AVOID setWill bug: DCX/CNX loop
-  //Prefectly correct C/C++ Pangolin code fails when used by AsyncMqttClient:
-  //  mqttClient.setWill((prefix + "DIED").c_str(),2,false,"DIED");
-  // 
-  //The following bog-standard C also fails
-  //  char buf[6];
-  //  sprintf(buf,"%sDIED",prefix.c_str());
-  //  mqttClient.setWill(buf,2,false,"As it very often does"); // different! setWill has a bug
-  //
-#ifdef USE_PANGOLIN
-  mqttClient.setWill((prefix + "DIED").c_str(),2,false,"It's 'Alpha': probably sill some bugs");
-  mqttClient.onError(onMqttError);
-#else
-  //In fact the ONLY thing tht works is:
-  //  ( and we know why :) )
-  mqttClient.setWill("ADIED",2,false,"As it very often does"); // different! setWill has a bug
-#endif  
-  
-  mqttClient.setCleanSession(START_WITH_CLEAN_SESSION);
-  mqttClient.setKeepAlive(RECONNECT_DELAY_M *3);
-  
-  connectToWifi();
-
-  unifiedSetup();
-}
-
-void loop() {}

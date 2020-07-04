@@ -1,7 +1,8 @@
 SOONEST:
-    docs: moz.conf persistent
+    docs: moz.conf persistent, tls, stm32
+    keywords
+    tls / patch etc in stm32
 SOON:
-    TLS
     debug levels
 MEDIUM-TERM:
     change blox to mb 

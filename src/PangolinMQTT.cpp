@@ -76,6 +76,7 @@ void PangolinMQTT::_destroyClient(){
 }
 
 void PangolinMQTT::_hpDespatch(mb m){
+//    Serial.printf("_hpDespatch %s id=%d @ QoS%d R=%s DUP=%d PL@%08X PLEN=%d\n",m.topic.c_str(),m.id,m.qos,m.retain ? "true":"false",m.dup,m.payload,m.plen);
     if(_cbMessage) _cbMessage(m.topic.c_str(), m.payload, PANGO_PROPS_t {m.qos,m.dup,m.retain}, m.plen, 0, m.plen);
 }
 
@@ -103,12 +104,16 @@ void PangolinMQTT::_fatal(uint8_t e,int info){
 }
 
 void PangolinMQTT::_handlePublish(mb m){
-    PANGO_PRINT("INBOUND PUBLISH %s id=%d @ QoS%d R=%s DUP=%d PL@%08X PLEN=%d\n",m.topic.c_str(),m.id,m.qos,m.retain ? "true":"false",m.dup,m.payload,m.plen);
+    PANGO_PRINT("_handlePublish %s id=%d @ QoS%d R=%s DUP=%d PL@%08X PLEN=%d\n",m.topic.c_str(),m.id,m.qos,m.retain ? "true":"false",m.dup,m.payload,m.plen);
     switch(m.qos){
-        case 1:
-            { PubackPacket pap(m.id); }
         case 0:
             _hpDespatch(m);
+            break;
+        case 1:
+            { 
+                _hpDespatch(m);
+                PubackPacket pap(m.id);
+            }
             break;
         case 2:
         //  MQTT Spec. "method A"
@@ -251,6 +256,7 @@ void PangolinMQTT::_onData(uint8_t* data, size_t len) {
     uint8_t     offset=0;
     size_t      N=0;
     PANGO_PRINT("<---- FROM WIRE %s %08X len=%d\n",PANGO::getPktName(data[0]),data,len);
+//    PANGO::dumphex(data,len);
     PANGO::_resetPingTimers();
     do {
         p=_packetReassembler(mb(data+len-p,p));

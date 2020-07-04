@@ -2,15 +2,19 @@
 
 # ArduinoIDE MQTT client library for ESP8266, ESP32 and STM32-NUCLEO
 
-###### *Version 0.0.7 - Beta - not recommended (yet) for critical applications*
+###### *Version 0.0.8 [Release Notes](docs/rn008.md)- Beta - not recommended (yet) for critical applications*
+
 
 * [Features](#features)
+* [Performance](#performance)
 * [Comparison with AsyncMqttClient](#comparison-with-asyncmqttclient)
-* [IMPORTANT NOTE FOR PLATFORMIO USERS]
 * [Installation](#installation)
 * [Issues / Support](#issues--support)
+* [IMPORTANT NOTE FOR PLATFORMIO USERS](#important-note-for-platformio-users)
 
 # Other Documents
+* [Using TLS](docs/tls.md)
+* [STM32 targets](docs/stm32.md)
 * [Challenges of embedded MQTT](docs/qos.md)
 * [Problems / errors in the AsyncMqttClient API](docs/api.md)
 * [List of 16 fatal bugs in AsyncMqttClient (with evidence)](docs/bugs.md)
@@ -22,6 +26,7 @@
 
  * Full* MQTT v3.1.1 Qos0/1/2 compliance, session management and recovery
  * Payload size limited only by available heap (~20kB on ESP8266, ~120kb on ESP32)
+ * TLS support (ESP8266 only)
  * Compilable diagnostics and testing topics:
    * dump
    * reboot
@@ -43,7 +48,15 @@
 * `AsyncMqttClient` - poorly / not at all: crashes on huge inward packets, limits outbound to 1-2kB and loses QoS1/2 recovery messages, fails to attempt session recovery and has no method of informing the user of either failure. Put simply, *it doesn't work*
 * `Pangolin` (*this* library) - as far as is technically possible, while informing the user of inevitable inherent failures.
 
-### Quick Start for existing users of `AsyncMqttClient`
+---
+
+# Performance
+
+![perf](assets/performance.jpg)
+
+---
+
+## Quick Start for existing users of `AsyncMqttClient`
 
 Pangolin *tries* to preserve API compatibility with `AsyncMqttClient` but that library contains illogical and incorrect features, which means that you will have to make minor changes to two or three lines of code in your existing apps before using them with Pangolin.
 
@@ -55,7 +68,9 @@ Take a look at the first - very simple - example which exists in two forms: A ["
 
 The remainder of the Examples can be compiled for either Pangolin or AsyncMqttClient to allow you to compare the two libraries in the few cases where AsynClientMqtt doesn't fail. See the [Example Sketches](docs/examples.md) on how to run them and get the best out of the code.
 
-### A better API
+---
+
+## A better API
 
 In the table below, **CHG** = those few API calls that have *had* to be changed just to "make sense" for the first release. These serve as a handy guide to the minimum you need to change in your current code.
 
@@ -85,7 +100,7 @@ String              payloadToString(uint8_t* data,size_t len);
 
 Full details, explanation and rationale for the changes [here](docs/api.md)
 
-### And NONE of this (so far: it's "alpha"!)
+## And NONE of this (so far: it's "alpha"!)
 
 ![setwill](assets/willtopic_shark.jpg)
 
@@ -141,6 +156,7 @@ std::string         payloadToStdstring(uint8_t* data,size_t len);
 String              payloadToString(uint8_t* data,size_t len);
 ```
 
+---
 
 ## 4 Stability
 
@@ -158,6 +174,10 @@ Pangolin depends upon the excellent libraries [ESPAsyncTCP](https://github.com/m
 
 You will need to install one or both of those before using Pangolin
 
+See also [Using TLS](docs/tls.md) for additional dependencies
+
+See also [STM32 targets](docs/stm32.md) for additional dependencies and information on using Pangolin on STM32-NUCLEO boards
+
 ---
 
 # Issues / Support
@@ -171,7 +191,7 @@ For over 3 years I have been notifying the PlatformIO team of errors in their bu
 For this reason, I will not accept any issues relating to build problems with PlatformIO, nor any pull requests or other suggestions which involve any changes that render the library less than 100% ArduinoIDE compatible. If you don't like this, you have two options:
 
 * Petition, moan, complain to PlatformIO dev team to make it 100% Arduino-compatible
-* Use another library - my position ***will not change*** until PlatformIO fix their problems
+* Use another library: my position ***will not change*** until PlatformIO ~~get off their lazy asses~~ fix their problems
 
 ## Non PlatformIO-related issues
 

@@ -53,7 +53,7 @@ uint32_t  nRCX=0;
 std::string lib(LIBRARY);
 std::string prefix(lib.begin(),++lib.begin());
 
-Ticker mqttReconnectTimer,wifiReconnectTimer,PT1,PPT2,PT3;
+Ticker mqttReconnectTimer,wifiReconnectTimer,PT1,PT2,PT3;
 void connectToMqtt() {
   Serial.println("Connecting to MQTT...");
   mqttClient.connect();
@@ -116,55 +116,7 @@ void onMqttConnect(bool sessionPresent) {
 #endif
   unifiedMqttConnect();
 } 
-/* 
- *  utility functions missing from AsyncMqttClient but present in Pangolin
- *  extracted from PANGO:: namespace and reproduced here as static globals 
- *  so AsyncMqttClient examples can use identical code
- *  
- */
-char* payloadToCstring(uint8_t* data,size_t len){
-    char* buf=static_cast<char*>(malloc(len+1)); /// CALLER MUST FREE THIS!!!
-    memcpy(buf,data,len);
-    buf[len]='\0';
-    return buf;
-};
 
-int payloadToInt(uint8_t* data,size_t len){
-    char* c=payloadToCstring(data,len);
-    int i=atoi(c);
-    free(c); // as all goood programmers MUST!
-    return i;
-}
-std::string payloadToStdstring(uint8_t* data,size_t len){
-    char* c=payloadToCstring(data,len);
-    std::string s;
-    s.assign(c,len);
-    free(c); // as all goood programmers MUST!
-    return s;
-}
-const char* cstringFromInt(int i){
-  static char buf[32]; // lazy but safe
-  sprintf(buf,"%d",i);
-  return buf;
-}
-void dumphex(uint8_t* mem, size_t len,uint8_t W=16) {
-    uint8_t* src = mem;
-    Serial.printf("Address: 0x%08X len: 0x%X (%d)", (ptrdiff_t)src, len, len);
-    for(uint32_t i = 0; i < len; i++) {
-        if(i % W == 0) Serial.printf("\n[0x%08X] 0x%08X: ", (ptrdiff_t)src, i);
-        Serial.printf("%02X ", *src);
-        src++;
-        //
-        if(i % W == W-1 || src==mem+len){
-            size_t ff=W-((src-mem) % W);
-            for(int p=0;p<(ff % W);p++) Serial.print("   ");
-            Serial.print("  "); // stretch this for nice alignment of final fragment
-            for(uint8_t* j=src-(W-(ff%W));j<src;j++) Serial.printf("%c", isprint(*j) ? *j:'.');
-        }
-    }
-    Serial.println();
-}
-// end utils
 #ifdef USE_PANGOLIN
 /*
     Necessary error handling absent in asyncMqttClient
@@ -282,9 +234,12 @@ void setup() {
   
   mqttClient.setCleanSession(START_WITH_CLEAN_SESSION);
   mqttClient.setKeepAlive(RECONNECT_DELAY_M *3);
+#ifdef USE_TLS
+  mqttClient.serverFingerprint(cert);
+  //mqttClient.setCredentials("your username","your password"); // if required
+#endif
   
   connectToWifi();
-
   unifiedSetup();
 }
 
