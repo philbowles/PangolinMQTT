@@ -19,3 +19,11 @@ Furthermore it has only been tested using the ST-approved boards manager.
 # Example sketches
 
 * [STM32 Tester](../examples/STM32_TESTER/STM32_TESTER.ino)
+
+# Known issues
+
+See [elsewhere](../README.md#important-note-for-platformio-users) for problems when using PlatformIO due to that environment being broken for a long time.
+
+The main problem is its non-standard use of architecture defines. The test sketch will probably fail compilation and pull in ESP libraries unless you use the ***correct*** define `ARDUINO_ARCH_STM32` in your build options.
+
+As mentioned in that other document, I will *not* provide any support for PlatformIO build issues and that's final.
