@@ -22,9 +22,31 @@ PangolinMQTT mqttClient;
 Ticker mqttReconnectTimer;
 Ticker wifiReconnectTimer;
 
+void connectToWifi() {
+  Serial.println("Connecting to Wi-Fi...");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+}
+
+void connectToMqtt() {
+  Serial.println("Connecting to MQTT...");
+  mqttClient.connect();
+}
+
 #ifdef ARDUINO_ARCH_ESP8266
 WiFiEventHandler wifiConnectHandler;
 WiFiEventHandler wifiDisconnectHandler;
+
+void onWifiConnect(const WiFiEventStationModeGotIP& event) {
+  Serial.println("Connected to Wi-Fi.");
+  connectToMqtt();
+}
+
+void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
+  Serial.println("Disconnected from Wi-Fi.");
+  mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
+  wifiReconnectTimer.once(RECONNECT_DELAY_W, connectToWifi);
+}
+
 #else
 void WiFiEvent(WiFiEvent_t event) {
     Serial.printf("[WiFi-event] event: %d\n", event);
@@ -43,29 +65,6 @@ void WiFiEvent(WiFiEvent_t event) {
     }
 }
 #endif
-
-void connectToWifi() {
-  Serial.println("Connecting to Wi-Fi...");
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-}
-
-#ifdef ARDUINO_ARCH_ESP8266
-void onWifiConnect(const WiFiEventStationModeGotIP& event) {
-  Serial.println("Connected to Wi-Fi.");
-  connectToMqtt();
-}
-
-void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
-  Serial.println("Disconnected from Wi-Fi.");
-  mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
-  wifiReconnectTimer.once(RECONNECT_DELAY_W, connectToWifi);
-}
-#endif
-
-void connectToMqtt() {
-  Serial.println("Connecting to MQTT...");
-  mqttClient.connect();
-}
 
 std::string pload0="multi-line payload hex dumper which should split over several lines, with some left over";
 std::string pload1="PAYLOAD QOS1";
@@ -99,7 +98,7 @@ void onMqttMessage(const char* topic, uint8_t* payload, struct PANGO_PROPS props
 
 void setup() {
   Serial.begin(115200);
-  Serial.printf("\nPangolinMQTT v0.0.7\n");
+  Serial.printf("\nPangolinMQTT v%s\n", PANGO_VERSION);
 
 #ifdef ARDUINO_ARCH_ESP8266
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
