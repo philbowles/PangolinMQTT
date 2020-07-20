@@ -14,7 +14,7 @@ Almost *no* embedded system can *fully* support MQTT "Quality of service" (QoS) 
 
 ### 1.1 The [MQTT 3.1.1 spec](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html) itself states
 
-*"4.1 Storing state 
+*"4.1 Storing state
 It is necessary for the Client and Server to store Session state in order to provide Quality of Service guarantees. The Client and Server MUST store Session state for the entire duration of the Session [MQTT-4.1.0-1]. A Session MUST last at least as long it has an active Network Connection [MQTT-4.1.0- 2].*
 
 *Non normative comment*
@@ -51,19 +51,19 @@ MQTT says: *"4.4 Message delivery retry*
 
 *When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any  unacknowledged PUBLISH Packets (where QoS > 0) and PUBREL Packets using their original Packet Identifiers [MQTT-4.4.0-1]. This is the only circumstance where a Client or Server is REQUIRED to redeliver messages."*
 
-Being physically unable to comply due to both 1.2.1 and 1.2.2 above, the embedded client has few healthy choices: 
+Being physically unable to comply due to both 1.2.1 and 1.2.2 above, the embedded client has few healthy choices:
 
 ##### 1.2.3.1 Just lie!
 
 It can "lie" to the server and ACK the incoming IDs regardless of whether they were delivered or not: "Confirm delivery of ID 666? Of *of course* I delivered it!...`server.sendACK(666);`"
 
-The success of this method depends on which of the two recommeded algorithms A or B is used (see "Figure 4.3 – QoS 2 protocol flow diagram, non normative example" in the [MQTT 3.1.1 spec](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html) ), Using method B allows the lie to go unnoticed *and* actually satisifes QoS2 rules *if* you actually managed to deliver the message before the loss of connection. The `Pangolin` library (see below) takes this approach.
+The success of this method depends on which of the two recommended algorithms A or B is used (see "Figure 4.3 – QoS 2 protocol flow diagram, non normative example" in the [MQTT 3.1.1 spec](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html) ), Using method B allows the lie to go unnoticed *and* actually satisfies QoS2 rules *if* you actually managed to deliver the message before the loss of connection. The `Pangolin` library (see below) takes this approach.
 
 Method A, well... didn't you mother tell you "lying never pays"? The server will *think* it has successfully delivered the QoS2 "exactly once" but as when ordering cheap things from various far-flung nations, the client is left forever shouting "Oi! Where's my packet???" - and he will *never* receive it, thus breaking the QoS2 promise.
 
 ##### 1.2.3.2 Put its fingers in its ears and go "ner! ner! ner!"
 
-The client can simply ignore the incoming retransmit requests while ever the server continues to send them. This will be...a long long time and depend on the specific implementation and/or storage capacity and the interpretation of "reasonble time" that the author chose. But they will keep on coming even after the next reboot, unless...
+The client can simply ignore the incoming retransmit requests while ever the server continues to send them. This will be...a long long time and depend on the specific implementation and/or storage capacity and the interpretation of "reasonable time" that the author chose. But they will keep on coming even after the next reboot, unless...
 
 ##### 1.2.3.3 Sweep it under the carpet
 
@@ -89,7 +89,7 @@ Worse, if the platform offers user choices which change those settings, as for e
 
 *(The "Lower Memory" options set TCP_MSS to 536 while "Higher Bandwidth" sets it to 1460)*
 
-Coding a supposedly portable *library* whic makes such unsafe assumptions or relies on specific implementation parameters is less forgiveable.
+Coding a supposedly portable *library* which makes such unsafe assumptions or relies on specific implementation parameters is less forgiveable.
 
 The take-away form this is that you app *needs* to know this value and stay below it by limiting the maximum payload size if it is to avoid...
 
@@ -97,7 +97,7 @@ The take-away form this is that you app *needs* to know this value and stay belo
 
 Well-designed libraries will present the user API with a chunk or stream of data that requires no knowledge of the underlying physical network MTU, LwIP TCP_MSS size, nor a dozen other parameters: It just "gives you the data". In order to do this it needs to _reassemble smaller blocks into larger packets before passing them on.
 
-Imagine the implementaion has a single 1k buffer and you get sent a 3.3k message (*and* - of course - that your app has allocated - say - a max sized buffer of 4k). The library you call will get 3x 1k blocks from the network layer which it has to hold on to until all the data are received and one 0.3k block which it then glues together and sends to you. You are none the wiser: you "just get" the 3.3kb message without needing to understand what goes on "under the hood".
+Imagine the implementation has a single 1k buffer and you get sent a 3.3k message (*and* - of course - that your app has allocated - say - a max sized buffer of 4k). The library you call will get 3x 1k blocks from the network layer which it has to hold on to until all the data are received and one 0.3k block which it then glues together and sends to you. You are none the wiser: you "just get" the 3.3kb message without needing to understand what goes on "under the hood".
 
 ### 2.2 Limits
 
@@ -107,9 +107,9 @@ No amount of reassembly is going to solve *huge* payloads: at some point, your M
 
 ...that will *always* be guaranteed to be present, no matter how minimal the implementation, i.e. less than 1x the smallest allowable LwIP buffer. This is the approach taken by `PubSubClient` which - by default - limits the payload to 128 bytes. For small apps (e.g. most IOT sensors) short messages like this are fine. A 2-decimal place temperature value only needs 5 characters when sent in plain text *and* it's not the end of the world if the odd one or two fail to arrive, hence QoS0 here is perfectly acceptable.
 
-`PubSubClient` only allows QoS0 so it is perfect for the large majority of typical small IOT applications. It's almost as if it was designed to be the "best in class" for these undemanding apps: it has everything it needs and not a single ounce of fat. It should come as no suprise then, to know that its author Nick O'Leary is in the list of contributors to the MQTT standard, and just happened to also write a little thing called "NODE-RED".
+`PubSubClient` only allows QoS0 so it is perfect for the large majority of typical small IOT applications. It's almost as if it was designed to be the "best in class" for these undemanding apps: it has everything it needs and not a single ounce of fat. It should come as no surprise then, to know that its author Nick O'Leary is in the list of contributors to the MQTT standard, and just happened to also write a little thing called "NODE-RED".
 
-If you want a 100% compliant, small, fast, stable, well supported QoS0 client, then `PubSubClient` i sthe only place to go as long as you don't need big payloads. I cannot recommend it highly enough (which goes for any other work by the same author)
+If you want a 100% compliant, small, fast, stable, well supported QoS0 client, then `PubSubClient` is the only place to go as long as you don't need big payloads. I cannot recommend it highly enough (which goes for any other work by the same author)
 
 #### b) Limit it to the size of a single LwIP buffer...
 

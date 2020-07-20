@@ -8,17 +8,17 @@
     * [Three major flaws causing the numerous bugs in in AsyncMqttClient](#three-major-flaws-cause-multiple-different-bugs)
     * [List of selected fatal bugs in AsyncMqttClient](#the-main-menu)
 * [Evidence](#evidence)
-  
+
 ## Background
 
-The original intention was to provide a range of examples to allow the user to compare PangolinMQTT and AsyncMqttClient in terms of capability, stability and peformance. There was originally a sketch called TimeOfFlight which sent and received repeated messages, timing how long it took each to make the round-trip between client and server so that the user could compare peformance.
+The original intention was to provide a range of examples to allow the user to compare PangolinMQTT and AsyncMqttClient in terms of capability, stability and performance. There was originally a sketch called TimeOfFlight which sent and received repeated messages, timing how long it took each to make the round-trip between client and server so that the user could compare performance.
 
 Each sketch was to have an "A_" and a "P_" version so that they could be run side by side to make any such comparisons simple and obvious.
 One such test would, for example show Pangolin performing between 10 and 15 times faster than AsyncMqttClient, using identical user code:
 
 ![sigh](../assets/graph1.jpg)
 
-That strategy soon had to change, since AsyncMqttClient contained *so many* fatal bugs that the amount of code to "work around" each - just to get *any* value that could be compared - rapidly became unwieldy and rendered any comparisons pointles, since AsyncMqttClient ***simply does not work***
+That strategy soon had to change, since AsyncMqttClient contained *so many* fatal bugs that the amount of code to "work around" each - just to get *any* value that could be compared - rapidly became unwieldy and rendered any comparisons pointless, since AsyncMqttClient ***simply does not work***
 
 # Show Me The Bugs
 
@@ -43,7 +43,7 @@ AsyncMqttClient does not *usually* enter the "danger zone" where the bugs live a
 
 Is a failure by the author of AsyncMqttClient to understand that LwIP is *asynchronous* and will send data when *it* decides to - which is *not* necessarily the same time as when it is called by the library. This means that any data passed to it must stay in existence until LwIP tells the library it is safe to release it.
 
-AsyncMqttClient *always* releases it immediately after the call to send, meaning that it *always* passes an invalid data pointer to LwIP unless the data is static. Yes, *every time*. The only reason it works *at all* is that - by chance - the orignal data is often still in the same place and has not *yet* been overwritten/resued when LwIP decides to send it. When it has *changed* then AsyncMqttClient will fail, it's that simple. Of course this depends on so many different factors that it appears "random". This is the cause of the frequent spontaneous DCX/CNX bug.
+AsyncMqttClient *always* releases it immediately after the call to send, meaning that it *always* passes an invalid data pointer to LwIP unless the data is static. Yes, *every time*. The only reason it works *at all* is that - by chance - the original data is often still in the same place and has not *yet* been overwritten/resued when LwIP decides to send it. When it has *changed* then AsyncMqttClient will fail, it's that simple. Of course this depends on so many different factors that it appears "random". This is the cause of the frequent spontaneous DCX/CNX bug.
 
 
 ### Major Flaw #2 "MF2" (Poor TCP buffer management)
@@ -87,7 +87,7 @@ Each of MF1, 2 and 3 can individually be the cause of:
 * Random Watchdog Timer resets
 * Message data corruption
 * Other QoS protocol violations
- 
+
 When combining any permutation of them due to a happenstance of timing, the world is your Oyster for potential as-yet-unknown failures.
 
 The inescapable conclusion is that AsyncMqttClient is simply ***not fit for purpose*** and should be avoided at all costs since it simply ***does not work***
@@ -134,7 +134,7 @@ It often results in a crash, but occasionally entertains, for example after a fa
 
 ![kp1](../assets/random1.jpg)
 
-And did so continuously for 10 seconds, whereupon it stopped as spontanesouly as it had started
+And did so continuously for 10 seconds, whereupon it stopped as spontaneously as it had started
 
 ![kp2](../assets/random2.jpg)
 
@@ -142,7 +142,7 @@ And did so continuously for 10 seconds, whereupon it stopped as spontanesouly as
 
 The list of violations of QoS promises are so extensive and fundamentally broken that is hard to pick the best example, so instead, here is one that is very easy to understand, even for the non-technically minded
 
-The MQTT specifiction states:
+The MQTT specification states:
 
 ![qos1 fail](../assets/pbspec.jpg)
 
@@ -159,7 +159,7 @@ And yes, this *does* matter - very much - or why would the spec insist upon it? 
 User is sending 8 messages of 100 bytes each. Why would he think he even *needed* complex reassembly code for such small packets when there is a 1072 byte buffer even with "LwIP Low Memory"? That question assumes he knows what any of the above means...
 
 Either way, without such obscure code, his own will fail. He sends out 8 messages and gets back...9. Or 10.
-Or more. Depends on just *how* wrongly AsyncMqttClient mismanages its buffers at the time. 
+Or more. Depends on just *how* wrongly AsyncMqttClient mismanages its buffers at the time.
 
 ![fragfail](../assets/frag.jpg)
 
@@ -169,12 +169,11 @@ In the above example its is only the user who is inconvenienced or confused, but
 
 MQTT QoS depends on a "handshake" protocol of packet exchange. At QoS1 I send PUBLISH server replies PUBACK for example. Both PUBLISH and PUBACK are merely lumps of data - *which may get fragmented* and we already know AsyncMqttClient *does not reassemble fragments*. So how can it possibly recognise a control packet split over a fragment boundary? It does not take Sherlock Holmes to deduce that if it can't recognise a control packet, it can't do QoS *at all* let alone "properly".
 
-Except of course in the "lucky" cases where no particularly troublesome combination of message size, buffer size and send/recieve rate conspire to always put whole control packets "on the wire". In the "random" cases where they *do* - it will fail.
+Except of course in the "lucky" cases where no particularly troublesome combination of message size, buffer size and send/receive rate conspire to always put whole control packets "on the wire". In the "random" cases where they *do* - it will fail.
 
 ## QoS 1/2 Protocol Violation - no message resend
 
-AsyncMqttClient makes no attempt whatsover to conform with MQTT-4.4.0-1 and resend failed QoS1 and/or 2 transactions on reconnect:
-
+AsyncMqttClient makes no attempt whatsoever to conform with MQTT-4.4.0-1 and resend failed QoS1 and/or 2 transactions on reconnect:
 
 ![pv2mqtt](../assets/pv2mqtt.jpg)
 
