@@ -27,7 +27,7 @@ void setup() {
   Ethernet.begin();
 //  Serial.print("IP: ");
 //  Serial.println(Ethernet.localIP());
-  
+
   mqttClient.onConnect(onMqttConnect);
   mqttClient.onDisconnect(onMqttDisconnect);
   mqttClient.onMessage(onMqttMessage);
