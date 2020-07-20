@@ -76,11 +76,11 @@ void onMqttConnect(bool sessionPresent) {
   Serial.printf("Connected to MQTT session=%d max payload size=%d\n",sessionPresent,mqttClient.getMaxPayloadSize());
   Serial.println("Subscribing at QoS 2");
   mqttClient.subscribe("test", 2);
-  Serial.printf("T=%u Publishing at QoS 0\n",millis());
+  Serial.printf("T=%lu Publishing at QoS 0\n",millis());
   mqttClient.publish("test", 0, false, pload0);
-  Serial.printf("T=%u Publishing at QoS 1\n",millis());
+  Serial.printf("T=%lu Publishing at QoS 1\n",millis());
   mqttClient.publish("test", 1, false, pload1);
-  Serial.printf("T=%u Publishing at QoS 2\n",millis());
+  Serial.printf("T=%lu Publishing at QoS 2\n",millis());
   mqttClient.publish("test", 2, false, pload2);
 }
 
@@ -93,7 +93,7 @@ void onMqttDisconnect(int8_t reason) {
 }
 
 void onMqttMessage(const char* topic, uint8_t* payload, struct PANGO_PROPS props, size_t len, size_t index, size_t total) {
-  Serial.printf("T=%u Message %s qos%d dup=%d retain=%d len=%d elapsed=%u\n",millis(),topic,props.qos,props.dup,props.retain,len,millis()-elapsed);
+  Serial.printf("T=%lu Message %s qos%d dup=%d retain=%d len=%d elapsed=%lu\n",millis(),topic,props.qos,props.dup,props.retain,len,millis()-elapsed);
   PANGO::dumphex(payload,len,16);
 }
 
