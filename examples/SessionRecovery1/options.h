@@ -34,12 +34,12 @@
  *
  */
 #ifdef USE_PANGOLIN
-  #define LIBRARY "Pangolin v0.0.7"
+  #define LIBRARY "Pangolin"
   #pragma message("Compiling for Pangolin")
   #include <PangolinMQTT.h>
   PangolinMQTT mqttClient;
 #else
-  #define LIBRARY "AsyncMqttClient v0.8.2"
+  #define LIBRARY "AsyncMqttClient"
   #pragma message("Compiling for AsyncMqttClient")
   #include <AsyncMqttClient.h>
   AsyncMqttClient mqttClient;
