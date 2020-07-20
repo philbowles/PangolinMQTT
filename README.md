@@ -19,7 +19,7 @@
 * [Problems / errors in the AsyncMqttClient API](docs/api.md)
 * [List of 16 fatal bugs in AsyncMqttClient (with evidence)](docs/bugs.md)
 * [Example Sketches](docs/examples.md)
-  
+
 ---
 
 # Features
@@ -110,7 +110,7 @@ Full details, explanation and rationale for the changes [here](docs/api.md)
 
 This is the screenshot of the outputs of the two versions of the first example sketch, the first running [`AsyncMqttClient`](examples/QuickStart_A/QuickStart_A.ino) and the  second running [Pangolin](examples/QuickStart_P/QuickStart_P.ino)
 
-![cpmpare](assets/compare.jpg)
+![compare](assets/compare.jpg)
 
 As you can see there are (at least) four major benefits of using Pangolin over `AsyncMqttClient` right from the start:
 
@@ -126,7 +126,7 @@ Pangolin handles any sized payload up to 1/2 the available heap both inbound and
 
 ![tcp mss](assets/lwip.jpg)
 
-If you choose the "Lower Memory" option it is 536, "Higher Bandwith" gives you 1460. Despite the fact that ArduinoIDE allocates 2x this size (e.g. 1072 vs 2920) it seems that `AsyncMqttClient` has ["issues"](docs/bugs.md) dealing with anything over the buffer size.
+If you choose the "Lower Memory" option it is 536, "Higher Bandwidth" gives you 1460. Despite the fact that ArduinoIDE allocates 2x this size (e.g. 1072 vs 2920) it seems that `AsyncMqttClient` has ["issues"](docs/bugs.md) dealing with anything over the buffer size.
 
 ### TL;DR The Pangolin way
 
@@ -162,7 +162,7 @@ String              payloadToString(uint8_t* data,size_t len);
 
 Pangolin is "alpha" so *of course* it is likely to contain bugs. What *can* be said though is that whatever yet-to-be-found bugs it may still contain, even at this first release it does *not* contain the bug that causes `AsyncMqttClient` to regularly (but at random) enter a disconnect/reconnect cycle - which is *so* common it will be referred to from now as "DCX/CNX". Neither does it contain the bug which prevents AsyncMqttClient from totally failing to implement QoS1 and 2, nor any of the other 16 fatal bugs in AsyncMqttClient [listed here](docs/bugs.md)
 
-At the time of writing, a "soak test" of the [Session Recovery 2 example sketch](examples/SessionRecovery2/SessionRecovery2.ino) shows that PangolinMQTT has been running for 194022 seconds (53.895 hours) without a single reconnection or message lost, while sending and receiving a QoS2 message every second.
+At the time of writing, a "soak test" of the [Session Recovery 2 example sketch](examples/SessionRecovery2/SessionRecovery2.ino) shows that PangolinMQTT has been running for 426023 seconds (118.34 hours, 4.93 days) without a single reconnection or message lost, while sending and receiving a QoS2 message every second.
 
 ![soak](/assets/soak.jpg)
 
@@ -186,7 +186,7 @@ See also [STM32 targets](docs/stm32.md) for additional dependencies and informat
 
 Pangolin is an *Arduino library*, and is 100% compatible with the ArduinoIDE and build system. PlatformIO, sadly, ***is not***. If PlatformIO has problems with code that compiles and runs correctly under ArduinoIDE, then it is a ***PlatformIO problem***, not an issue with this - or any other - valid Arduino library.
 
-For over 3 years I have been notifying the PlatformIO team of errors in their build setting related to the use of non-standard and non ArduinoIDE-compatible architecture #defines which break *many* vaild Arduino libraries. For over 3 years they have failed to fix it,so I refuse to provide any support on any of my 100% Arduino compatible libraries for users of PlatformIO until they do.
+For over 3 years I have been notifying the PlatformIO team of errors in their build setting related to the use of non-standard and non ArduinoIDE-compatible architecture #defines which break *many* valid Arduino libraries. For over 3 years they have failed to fix it,so I refuse to provide any support on any of my 100% Arduino compatible libraries for users of PlatformIO until they do.
 
 For this reason, I will not accept any issues relating to build problems with PlatformIO, nor any pull requests or other suggestions which involve any changes that render the library less than 100% ArduinoIDE compatible. If you don't like this, you have two options:
 
@@ -195,7 +195,7 @@ For this reason, I will not accept any issues relating to build problems with Pl
 
 ## Non PlatformIO-related issues
 
-Obviously I will check the issues here from time to time, but if you want a rapid resonse, I can usually be found moderating on of these FB groups, including a new one especially set up for Pangolin users:
+Obviously I will check the issues here from time to time, but if you want a rapid response, I can usually be found moderating on of these FB groups, including a new one especially set up for Pangolin users:
 
 * [Pangolin Support](https://www.facebook.com/groups/pangolinmqtt/)
 * [ESP8266 & ESP32 Microcontrollers](https://www.facebook.com/groups/2125820374390340/)

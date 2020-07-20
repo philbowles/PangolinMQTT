@@ -1,7 +1,4 @@
 SOONEST:
-    docs: moz.conf persistent, tls, stm32
-    keywords
-    tls / patch etc in stm32
 SOON:
     debug levels
 MEDIUM-TERM:
