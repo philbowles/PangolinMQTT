@@ -99,7 +99,7 @@ void onMqttMessage(const char* topic, uint8_t* payload, struct PANGO_PROPS props
 
 void setup() {
   Serial.begin(115200);
-  Serial.printf("\nPangolinMQTT v0.0.7\n");
+  Serial.printf("\nPangolinMQTT QuickStart\n");
 
 #ifdef ARDUINO_ARCH_ESP8266
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
