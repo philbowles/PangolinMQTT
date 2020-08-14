@@ -34,12 +34,12 @@
  *
  */
 #ifdef USE_PANGOLIN
-  #define LIBRARY "Pangolin v0.0.7"
+  #define LIBRARY "Pangolin"
   #pragma message("Compiling for Pangolin")
   #include <PangolinMQTT.h>
   PangolinMQTT mqttClient;
 #else
-  #define LIBRARY "AsyncMqttClient v0.8.2"
+  #define LIBRARY "AsyncMqttClient"
   #pragma message("Compiling for AsyncMqttClient")
   #include <AsyncMqttClient.h>
   AsyncMqttClient mqttClient;
@@ -146,13 +146,13 @@ void onMqttError(uint8_t e,uint32_t info){
       break;
     // The BOGUS_xxx messages are 99.99% unlikely to ever happen, but this message is better than a crash, non?
     case BOGUS_PACKET: //  Your server sent a control packet type unknown to MQTT 3.1.1
-      Serial.printf("ERROR: BOGUS_PACKET TYPE=%02x\n",e,info);
+      Serial.printf("ERROR: BOGUS_PACKET TYPE=%02x\n",info);
       break;
     case BOGUS_ACK: // TCP sent an ACK for a packet that we don't remember sending!
     // Only possible causes are: 1) Bug in this lib 2) Bug in ESPAsyncTCP lib 3) Bug in LwIP 4) Your noisy network
     // is SNAFU 5) Subscribing to an invalid name in onMqttConnect
     // Either way, it's pretty fatal, so expect "interesting" results after THIS happens (it won't)
-      Serial.printf("ERROR: BOGUS_ACK TCP length=%\n",info);
+      Serial.printf("ERROR: BOGUS_ACK TCP length=%d\n",info);
       break;
     default:
       Serial.printf("UNKNOWN ERROR: %u extra info %d",e,info);

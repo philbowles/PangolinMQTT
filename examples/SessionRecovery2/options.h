@@ -3,18 +3,19 @@
  *  works, we will get back every message we sent, 1:1 any gaps in the
  *  gaps in the sequence mean that QoS2 is broken.
  *
- *  Warning: if you send messages fatser than MQTT can acknowledge them,
+ *  Warning: if you send messages faster than MQTT can acknowledge them,
  *  they may come back out-of-sequence, but as long as MQTT can keep up
  *  ON AVERAGE then you will still always get them all.
  *
  *
  * PLEASE READ THE NOTES ON THIS SKETCH FIRST AT
  *
- * https://github.com/philbowles/Pangolin/
+ * https://github.com/philbowles/PangolinMQTT
  *
  * If you remove the following line, this sketch will compile
  * using AsyncMqttClient to allow you to compare results / performance
  */
+
 #define USE_PANGOLIN
 //#define USE_TLS
 

@@ -21,9 +21,9 @@ Many of the functions are simply *wrong* and *appear* to have been written with 
 
 The correct C/C++ datatype for such data is either `byte` or `uint8_t`. It is *NOT*, never has been and never will be `char`.
 
-Therefore, any reference to payload data that is *not* a `uint8_t` or a `uint8_t*` pointer to that data is also *WRONG*. The biggest problem in assuming tht "its the same as a `char*`" is that 99% of C string functions use `char*` for the simple fact they operate on C strings and MQTT payloads ***are NOT C strings***.
+Therefore, any reference to payload data that is *not* a `uint8_t` or a `uint8_t*` pointer to that data is also *WRONG*. The biggest problem in assuming that "its the same as a `char*`" is that 99% of C string functions use `char*` for the simple fact they operate on C strings and MQTT payloads ***are NOT C strings***.
 
-Seeing a `char*` then can easliy seduce the programmer into thinking what it points to is a string as 99.9% of the times he has seen it before, it *does*. Thus "Oh, char* - must be a string then, I'll pass it to `strlen` or `strcpy` or `strXXXanything` else" - but if you do any of those things with an MQTT payload, your code will probably crash, because ***it is NOT a C string***.
+Seeing a `char*` then can easily seduce the programmer into thinking what it points to is a string as 99.9% of the times he has seen it before, it *does*. Thus "Oh, char* - must be a string then, I'll pass it to `strlen` or `strcpy` or `strXXXanything` else" - but if you do any of those things with an MQTT payload, your code will probably crash, because ***it is NOT a C string***.
 
 That fact alone should be enough to remind you to *always* address payload data with a `uint8_t*` - if it isn't, you are going to have problems.
 
@@ -130,7 +130,7 @@ Is the user in control of any of that, or is it what he/she expects the library 
 The DUP flag in the outgoing PUBLISH packet is set independently to the incoming PUBLISH packet, its value MUST be determined solely by whether the outgoing PUBLISH packet is a retransmission [MQTT-3.3.1-3].
 ```
 
-Note the use of "*solely*" - i.e only by something thing that can know when it is necessary: the library itself. Allowing the user to *set* it can only be described as pointless and potentially dangerous.
+Note the use of "*solely*" - i.e only by something that can know when it is necessary: the library itself. Allowing the user to *set* it can only be described as pointless and potentially dangerous.
 
 Not only is there *no* circumstance under which you should ever touch it, you *absolutely should never be allowed to*. If you even *think* of touching it, you would break QoS1. If QoS1 worked, that is.
 
@@ -147,7 +147,7 @@ It also has a fatal bug. See [Bugs](bugs.md#setwill)
 Has the same pointlessly-long-name issue: `AsyncMqttClientDisconnectReason` albeit only 30 characters this time.
 It describes amd renames what its just a `uint8_t` which is wrong anyway because to get the *fullest* information from the many *valid* disconnect reasons, it needs to be a *signed* `int8_t`.
 
-LwIP produces [error codes](https://www.nongnu.org/lwip/2_0_x/group__infrastructure__errors.html) with negative value and these get fed back up through ESPAsyncTCP eventually to this library, which also has a few of its own valid reasons. How to tell the difference? All of Pangolin's are +ve of course, but now if you get a rare underlying TCP error which will help in diagnosing problems, you will at least get told the reason, unlike `AsyncMqttClient` which just either ignores it, lets its escalate to a confusingly different error or simply pretends it didn't happen.
+LwIP produces [error codes](https://www.nongnu.org/lwip/2_0_x/group__infrastructure__errors.html) with negative value and these get fed back up through ESPAsyncTCP eventually to this library, which also has a few of its own valid reasons. How to tell the difference? All of Pangolin's are positive values of course, but now if you get a rare underlying TCP error which will help in diagnosing problems, you will at least get told the reason, unlike `AsyncMqttClient` which just either ignores it, lets its escalate to a confusingly different error or simply pretends it didn't happen.
 
 The positive, library generated disconnect reasons are taken from:
 
@@ -206,7 +206,7 @@ String           payloadToString(uint8_t* data,size_t len);
 
 ```
 
-All of them are designed to be called with `PANGO::xxx(payload, length)` inside the `onMessage` callback, but will work anywhere in your code with any blob + known length. There are plenty of examples in the  er... [examples](examples.md).
+All of them are designed to be called with `PANGO::xxx(payload, length)` inside the `onMessage` callback, but will work anywhere in your code with any blob + known length. There are plenty of examples in the [examples](examples.md) Folder.
 
 `char* payloadToCstring(uint8_t* data,size_t len);`
 
@@ -218,12 +218,12 @@ Happily, none of the other functions require anything fancy like that.
 
 `int payloadToInt(uint8_t* data,size_t len);`
 
-Returns an int *only if the packet actually does in fact contain a valid NUL-terminated c-string consiting of numeric digits*. If it *doesn't* then all hell etc... If it' a valid string but contains alpah characters you will get either zero some bogus value.
+Returns an int *only if the packet actually does in fact contain a valid NUL-terminated c-string consiting of numeric digits*. If it *doesn't* then all hell etc... If it' a valid string but contains alpha characters you will get either zero or some bogus value.
 
 `std::string payloadToStdstring(uint8_t* data,size_t len);`
 
-Does what is says on he tin *if* valid c-string etc - you know the drill by now.
+Does what is says only if it contains a valid c-string etc - you know the drill by now.
 
 `String payloadToString(uint8_t* data,size_t len);`
 
-Same as above but returns an Arduino String (capital "S") if you are daft enough to want to use one.]
+Same as above but returns an Arduino String (capital "S") if you are daft enough to want to use one.
