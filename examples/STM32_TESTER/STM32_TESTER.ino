@@ -27,12 +27,12 @@ void setup() {
   Ethernet.begin();
 //  Serial.print("IP: ");
 //  Serial.println(Ethernet.localIP());
-  
+
   mqttClient.onConnect(onMqttConnect);
   mqttClient.onDisconnect(onMqttDisconnect);
   mqttClient.onMessage(onMqttMessage);
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
-  mqttClient.setWill("NUCLEO_DIED",2,false,"It's 'Alpha': probably sill some bugs");
+  mqttClient.setWill("NUCLEO_DIED",2,false,"It's 'Alpha': probably still some bugs");
   mqttClient.setCleanSession(START_WITH_CLEAN_SESSION);
 //  mqttClient.setClientId("f429zi");
   mqttClient.connect();
