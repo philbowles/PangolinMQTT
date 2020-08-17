@@ -1,5 +1,5 @@
 /*
- *  QoS1 guarantees to deliver meesages At least ONCE so if QoS1
+ *  QoS1 guarantees to deliver messages At least ONCE so if QoS1
  *  works, we will get back every message we sent, 1:1 plus possibly
  *  some duplicates, which we will ignore. (As long as your
  *  broker has persistence true in its .conf file)
@@ -13,7 +13,7 @@
  *
  * PLEASE READ THE NOTES ON THIS SKETCH FIRST AT
  *
- * https://github.com/philbowles/Pangolin/
+ * https://github.com/philbowles/PangolinMQTT
  *
  * If you remove the following line, this sketch will compile
  * using AsyncMqttClient to allow you to compare results / performance
@@ -23,7 +23,7 @@
 
 #include<set>
 //
-//    Common to all sketches: necssary infrastructure
+//    Common to all sketches: necessary infrastructure
 //
 #define WIFI_SSID "XXXXXXXX"
 #define WIFI_PASSWORD "XXXXXXXX"
