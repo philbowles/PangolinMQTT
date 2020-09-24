@@ -49,11 +49,11 @@ void onMqttConnect(bool sessionPresent) {
   Serial.printf("Connected to MQTT session=%d max payload FIXED\n",sessionPresent);
   Serial.println("Subscribing at QoS 2");
   mqttClient.subscribe("test", 2);
-  Serial.printf("T=%u Publishing at QoS 0\n",millis());
+  Serial.printf("T=%lu Publishing at QoS 0\n",millis());
   mqttClient.publish("test", 0, false, pload.c_str());
-  Serial.printf("T=%u Publishing at QoS 1\n",millis());
+  Serial.printf("T=%lu Publishing at QoS 1\n",millis());
   mqttClient.publish("test", 1, false, pload.c_str());
-  Serial.printf("T=%u Publishing at QoS 2\n",millis());
+  Serial.printf("T=%lu Publishing at QoS 2\n",millis());
   mqttClient.publish("test", 2, false, pload.c_str());
 }
 
@@ -66,7 +66,7 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
 }
 
 void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties props, size_t len, size_t index, size_t total) {
-  Serial.printf("T=%u Message %s qos%d dup=%d retain=%d len=%d elapsed=%u\n",millis(),topic,props.qos,props.dup,props.retain,len,millis()-elapsed);
+  Serial.printf("T=%lu Message %s qos%d dup=%d retain=%d len=%d elapsed=%lu\n",millis(),topic,props.qos,props.dup,props.retain,len,millis()-elapsed);
 }
 
 void setup() {

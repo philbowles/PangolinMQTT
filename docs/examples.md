@@ -12,9 +12,9 @@
 
 ## Quick Start
 
-The ["A_" version](../examples/QuickStart_A/QuickStart_A.ino) compiles with AsyncMqttClient, the ["P_" version](../examples/QuickStart_P/QuickStart_P.ino) uses Pangolin. The two are as close as possible in code, afetr allowing for minor [API](api.md) differences.
+The ["A_" version](../examples/QuickStart_A/QuickStart_A.ino) compiles with AsyncMqttClient, the ["P_" version](../examples/QuickStart_P/QuickStart_P.ino) uses Pangolin. The two are as close as possible in code, after allowing for minor [API](api.md) differences.
 
-Comparing the two side by side should give a quick idea of the changes you need to make to any exisiting code base you may have in order to move your app from AsyncMqttClient to Pangolin
+Comparing the two side by side should give a quick idea of the changes you need to make to any existing code base you may have in order to move your app from AsyncMqttClient to Pangolin
 
 In-depth details of the API changes and the reasons for each can be see in the [API](api.md) documentation itself.
 
@@ -30,7 +30,7 @@ At the top of the sketch is the line:
 #define USE_PANGOLIN
 ```
 
-This will compile the sketch using the PangolinMQTT library. Barring any "teething troubles" in this beta release, this version should just repsond correctly to sensible values sent to it as described below.
+This will compile the sketch using the PangolinMQTT library. Barring any "teething troubles" in this beta release, this version should just respond correctly to sensible values sent to it as described below.
 
 Removing the line will cause the sketch to run with the AsyncMqttClient library. A  large proportion of those same tests will fail, for one or more of the reasons explained in the [bugs documentation](bugs.md)
 
@@ -44,7 +44,7 @@ The time is taken at the start, then again when the last message arrives back. T
 
 All of the variables can be changed by the user via a remote app. They are:
 
-* rate  
+* rate
 Payload=The number of milliseconds between each group or "burst" of messages. 1000 = 1 second
 * size
 Payload=The size of the payload for each message in bytes

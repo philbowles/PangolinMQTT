@@ -7,41 +7,41 @@
 /*
  * This file "irons out" the differences between Pangolin API and AsncMqttClient API
  * and hides the incorrcet and illogal parametrs of the latter from the user
- * 
+ *
  * It provides:
- * 
+ *
  * a) A common "framework" to connect / disconnect to wifi / mqtt
  * b) A selection fo utility functions to reduce user effort and allow
  *    simple payload handling in the main sketch, irrespective of content type
- * b) a unified API that works with either lib so that the main code in the sketch 
+ * b) a unified API that works with either lib so that the main code in the sketch
  *    will compile cleanly for either library
- *    
+ *
  * It also hides all the "machinery" so that the porpuse and intent of the main sketch
  * is clear and obvious as it is reduced to two simple functions:
- * 
+ *
  *  unifiedMqttConnect  when mqtt connects, in whch the user should then...
  *    unifiedSubscribe( topic , qos); // as per usua: sme parameters as "normal" subscribe
- *    
+ *
  *  unifiedMqttMesage to handle incoming messages in the same wasy as the "normal" onMqttConnect
  *    (but with correct data types and less BS)
- *  
+ *
  *  at any point, user can call unifiedPublish with similar parameters to the original,
  *    (but with correct data types and less BS)
- *    
+ *
  *  Finally for anyskecth that need to set global variables of timers etc, there is
- *  
+ *
  *  unifiedSetup
- *  
+ *
  */
 #ifdef USE_PANGOLIN
-  #define LIBRARY "Pangolin v0.0.7"
+  #define LIBRARY "Pangolin"
   #pragma message("Compiling for Pangolin")
-  #include <PangolinMQTT.h> 
+  #include <PangolinMQTT.h>
   PangolinMQTT mqttClient;
 #else
-  #define LIBRARY "AsyncMqttClient v0.8.2"
+  #define LIBRARY "AsyncMqttClient"
   #pragma message("Compiling for AsyncMqttClient")
-  #include <AsyncMqttClient.h> 
+  #include <AsyncMqttClient.h>
   AsyncMqttClient mqttClient;
 #endif
 
@@ -91,16 +91,16 @@ extern void unifiedMqttConnect();
 extern void unifiedMqttMessage(std::string,uint8_t*,uint8_t,bool,bool,size_t,size_t,size_t);
 extern void unifiedMqttDisconnect(int8_t);
 
-void unifiedSubscribe(std::string topic,uint8_t qos){ 
+void unifiedSubscribe(std::string topic,uint8_t qos){
   Serial.printf("unifiedSubscribe %s @ QoS%d\n",topic.c_str(),qos);
   mqttClient.subscribe(topic.c_str(),qos);
 }
 
 void unifiedPublish(std::string t,uint8_t q,bool r,uint8_t* p,size_t l){
 #ifdef USE_PANGOLIN
-  mqttClient.publish(t.c_str(),q,r,p,l,false); 
+  mqttClient.publish(t.c_str(),q,r,p,l,false);
 #else
-  mqttClient.publish(t.c_str(),q,r,(char*) p,l); 
+  mqttClient.publish(t.c_str(),q,r,(char*) p,l);
 #endif
 }
 void unifiedUnsubscribe(std::string topic){ mqttClient.unsubscribe(topic.c_str()); }
@@ -115,7 +115,7 @@ void onMqttConnect(bool sessionPresent) {
   Serial.printf("Connected to MQTT: Session=%d FIXED\n",sessionPresent);
 #endif
   unifiedMqttConnect();
-} 
+}
 
 #ifdef USE_PANGOLIN
 /*
@@ -144,15 +144,15 @@ void onMqttError(uint8_t e,uint32_t info){
     case OUTBOUND_PUB_TOO_BIG:
       Serial.printf("ERROR: OUTBOUND_PUB_TOO_BIG size=%d Max=%d\n",e,mqttClient.getMaxPayloadSize());
       break;
-    // The BOGUS_xxx messages are 99.99% unlikely to ever happen, but this message is better than a crash, non? 
-    case BOGUS_PACKET: //  Your server sent a control packet type unknown to MQTT 3.1.1 
-      Serial.printf("ERROR: BOGUS_PACKET TYPE=%02x\n",e,info);
+    // The BOGUS_xxx messages are 99.99% unlikely to ever happen, but this message is better than a crash, non?
+    case BOGUS_PACKET: //  Your server sent a control packet type unknown to MQTT 3.1.1
+      Serial.printf("ERROR: BOGUS_PACKET TYPE=%02x\n",info);
       break;
     case BOGUS_ACK: // TCP sent an ACK for a packet that we don't remember sending!
-    // Only possible causes are: 1) Bug in this lib 2) Bug in ESPAsyncTCP lib 3) Bug in LwIP 4) Your noisy network 
+    // Only possible causes are: 1) Bug in this lib 2) Bug in ESPAsyncTCP lib 3) Bug in LwIP 4) Your noisy network
     // is SNAFU 5) Subscribing to an invalid name in onMqttConnect
     // Either way, it's pretty fatal, so expect "interesting" results after THIS happens (it won't)
-      Serial.printf("ERROR: BOGUS_ACK TCP length=%\n",info);
+      Serial.printf("ERROR: BOGUS_ACK TCP length=%d\n",info);
       break;
     default:
       Serial.printf("UNKNOWN ERROR: %u extra info %d",e,info);
@@ -191,7 +191,7 @@ void onMqttMessage(const char* top,uint8_t* p,struct PANGO_PROPS pp,size_t l,siz
 }
 #else
 void onMqttMessage(char* top, char* p, AsyncMqttClientMessageProperties pp, size_t l, size_t i, size_t tot) {
-  unifiedMqttMessage(std::string(top),(uint8_t*)p,pp.qos,pp.dup,pp.retain,l,i,tot);  
+  unifiedMqttMessage(std::string(top),(uint8_t*)p,pp.qos,pp.dup,pp.retain,l,i,tot);
 }
 #endif
 
@@ -202,7 +202,7 @@ void setup() {
 
   WiFi.disconnect();
   WiFi.mode(WIFI_STA);
-  
+
 #ifdef ARDUINO_ARCH_ESP32
   WiFi.onEvent(WiFiEvent);
 #else
@@ -217,7 +217,7 @@ void setup() {
   //DIFFERENT TO AVOID setWill bug: DCX/CNX loop
   //Prefectly correct C/C++ Pangolin code fails when used by AsyncMqttClient:
   //  mqttClient.setWill((prefix + "DIED").c_str(),2,false,"DIED");
-  // 
+  //
   //The following bog-standard C also fails
   //  char buf[6];
   //  sprintf(buf,"%sDIED",prefix.c_str());
@@ -230,15 +230,15 @@ void setup() {
   //In fact the ONLY thing tht works is:
   //  ( and we know why :) )
   mqttClient.setWill("ADIED",2,false,"As it very often does"); // different! setWill has a bug
-#endif  
-  
+#endif
+
   mqttClient.setCleanSession(START_WITH_CLEAN_SESSION);
   mqttClient.setKeepAlive(RECONNECT_DELAY_M *3);
 #ifdef USE_TLS
   mqttClient.serverFingerprint(cert);
   //mqttClient.setCredentials("your username","your password"); // if required
 #endif
-  
+
   connectToWifi();
   unifiedSetup();
 }

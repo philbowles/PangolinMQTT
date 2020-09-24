@@ -1,9 +1,9 @@
 /*
  * PLEASE READ THE NOTES ON THIS SKETCH FIRST AT
- * 
+ *
  * https://github.com/philbowles/Pangolin/
- * 
- * If you remove the following line, this sketch will compile 
+ *
+ * If you remove the following line, this sketch will compile
  * using AsyncMqttClient to allow you to compare results / performance
  */
 #define USE_PANGOLIN
@@ -30,7 +30,7 @@ const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,
 
 #include "options.h"
 //
-// unified functions that "smooth out" the minor API differences between the libs 
+// unified functions that "smooth out" the minor API differences between the libs
 //
 extern void unifiedPublish(std::string,uint8_t,bool,uint8_t*,size_t);
 extern void unifiedSubscribe(std::string,uint8_t);
@@ -41,7 +41,7 @@ extern std::string uTopic(std::string t); // automatically prefixes the topic wi
 //  The actual logic of the THIS sketch
 //
 //  Every TRANSMIT_RATE milliseconds, send out block of BURST_SIZE number of messages as QoSX each with
-//  a payload of PAYLOAD_SIZE bytes. 
+//  a payload of PAYLOAD_SIZE bytes.
 //
 //  Save T0 immediately prior to sending the burst of messages
 //  Once all BURST_SIZE messages have returned, take T1
@@ -53,7 +53,7 @@ extern std::string uTopic(std::string t); // automatically prefixes the topic wi
 //
 //  Every 5 seconds send 10 QoS0 messages with payload size of 100bytes
 //  publish("Pavg0",50...   = (4500 - 4000) / 10
-//  
+//
 //  Default/initial values: FIX!!!
 #define QOS                  0
 #define PAYLOAD_SIZE       100
@@ -69,7 +69,7 @@ std::string avgTopic=uTopic("avg"); // the simple average of the T-O-F at QosX
 uint32_t  startTime; // start of burst in millis()
 uint32_t  nInFlight; // how many still not yet received? avg published when this => 0
 
-bool      bursting=false; // TX timer interlock      
+bool      bursting=false; // TX timer interlock
 
 uint8_t   ctrlQos=QOS; // can be changed in-flight by publishing "qos" with payload 0 1 or 2
 uint32_t  ctrlRate=TRANSMIT_RATE; // can be changed in-flight by publishing "rate" with payload of new TX rate
@@ -90,7 +90,7 @@ std::string ctrlTopicS=("size");
 //
 // the number of messages in each burts
 std::string ctrlTopicB=("burst");
-// 
+//
 // show current settings
 std::string ctrlTopicV=("show");
 //
@@ -104,13 +104,13 @@ std::string ctrlTopicY=("start");
 void setTofQosTopic(uint8_t qos){
     tofTopic.pop_back(); // trim qos from topic
     avgTopic.pop_back(); // trim qos from topic
-    tofTopic.push_back(qos + 0x30); // add back on new Qos 
-    avgTopic.push_back(qos + 0x30); // add back on new Qos 
+    tofTopic.push_back(qos + 0x30); // add back on new Qos
+    avgTopic.push_back(qos + 0x30); // add back on new Qos
 }
 
 void showValues(){
-  Serial.printf("Using QoS%d, payload size %d, burst size %d, rate every %d.%03d second(s)\n",ctrlQos,ctrlSize,ctrlBurst,ctrlRate/1000,ctrlRate%1000);    
-  Serial.printf("Round-trip topic=%s, avg topic=%s\n",tofTopic.c_str(),avgTopic.c_str());    
+  Serial.printf("Using QoS%d, payload size %d, burst size %d, rate every %d.%03d second(s)\n",ctrlQos,ctrlSize,ctrlBurst,ctrlRate/1000,ctrlRate%1000);
+  Serial.printf("Round-trip topic=%s, avg topic=%s\n",tofTopic.c_str(),avgTopic.c_str());
 }
 
 void sendBurst(){
@@ -125,7 +125,7 @@ void sendBurst(){
 
 void addQosToTopic(uint8_t qos){
    tofTopic.push_back(qos + 0x30); // add on initial Qos e.g. Ptof and qos=1 becomes Ptof1
-   avgTopic.push_back(qos + 0x30); // add on initial Qos e.g. Atof and qos=0 becomes Atof0   
+   avgTopic.push_back(qos + 0x30); // add on initial Qos e.g. Atof and qos=0 becomes Atof0
 }
 
 void changeValues(uint8_t newQos,uint32_t newRate,uint32_t newSize,uint32_t newBurst){
@@ -139,7 +139,7 @@ void changeValues(uint8_t newQos,uint32_t newRate,uint32_t newSize,uint32_t newB
     addQosToTopic(newQos);
     ctrlQos=newQos;
     Serial.printf("Subscribe to %s @ QoS%d\n",tofTopic.c_str(),ctrlQos);
-    unifiedSubscribe(tofTopic.c_str(),ctrlQos); // T-O-F topic @ chosen QoS   
+    unifiedSubscribe(tofTopic.c_str(),ctrlQos); // T-O-F topic @ chosen QoS
   }
   if(newRate!=ctrlRate){
     stopClock();
@@ -177,9 +177,9 @@ void unifiedMqttConnect() {
   unifiedSubscribe(ctrlTopicV.c_str(),0); // show
   unifiedSubscribe(ctrlTopicX.c_str(),0); // stop
   unifiedSubscribe(ctrlTopicY.c_str(),0); // start
-  
-  unifiedSubscribe(tofTopic.c_str(),ctrlQos); // T-O-F topic @ chosen QoS   
-  
+
+  unifiedSubscribe(tofTopic.c_str(),ctrlQos); // T-O-F topic @ chosen QoS
+
   showValues();
   startClock();
 }
@@ -191,22 +191,22 @@ void unifiedMqttDisconnect(int8_t reason) {
 
 void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool dup, bool retain, size_t len, size_t index, size_t total) {
   if(topic=="qos"){
-    uint8_t newqos=PANGO::payloadToInt(payload,len); 
+    uint8_t newqos=PANGO::payloadToInt(payload,len);
     if(newqos < 3) changeValues(newqos,ctrlRate,ctrlSize,ctrlBurst);
     else Serial.printf("ERROR! Cannot change to QoS%d!!!\n",newqos);
   }
   else if(topic=="rate") {
-    uint32_t newrate=PANGO::payloadToInt(payload,len); 
+    uint32_t newrate=PANGO::payloadToInt(payload,len);
     if(newrate > 125 && newrate < 10000) changeValues(ctrlQos,newrate,ctrlSize,ctrlBurst); // arbitrary "sensible" values
     else Serial.printf("ERROR! Rate shuld be between 125 and 10000 (0.125s and 10s) %d is not!!!\n",newrate);
   }
   else if(topic=="size") {
-    uint32_t newsize=PANGO::payloadToInt(payload,len); 
+    uint32_t newsize=PANGO::payloadToInt(payload,len);
     if(newsize > 16) changeValues(ctrlQos, ctrlRate,newsize,ctrlBurst);  // at least a string value of a massive integer + some safety
     else Serial.printf("ERROR! Payload size %d is too small!!!\n",newsize);
   }
   else if(topic=="burst") {
-    uint32_t newburst=PANGO::payloadToInt(payload,len); 
+    uint32_t newburst=PANGO::payloadToInt(payload,len);
     if(newburst > 0 && newburst < 20) changeValues(ctrlQos, ctrlRate,ctrlSize,newburst);  // limited by mosquitto in-flight Q size
     else Serial.printf("ERROR! Burst size %d is too small!!!\n",newburst);
   }

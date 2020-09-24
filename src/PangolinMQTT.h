@@ -214,8 +214,8 @@ class PangolinMQTT {
                 void                onSubscribe(PANGO_cbSubscribe callback){ _cbSubscribe=callback; }
                 void                onUnsubscribe(PANGO_cbUnsubscribe callback){ _cbUnsubscribe=callback; }
                 uint16_t            publish(const char* topic, uint8_t qos, bool retain, uint8_t* payload, size_t length, bool dup); // <- stupid!!!
-                void                publish(const char* topic, uint8_t qos, bool retain, std::string payload){ publish(topic,qos,retain, (uint8_t*) payload.data(), (size_t) payload.size()+1,false); }
-                void                publish(const char* topic, uint8_t qos, bool retain, String payload){ publish(topic,qos,retain, (uint8_t*) payload.c_str(), (size_t) payload.length()+1,false); }
+                void                publish(const char* topic, uint8_t qos, bool retain, std::string payload){ publish(topic,qos,retain, (uint8_t*) payload.data(), (size_t) payload.size(),false); }
+                void                publish(const char* topic, uint8_t qos, bool retain, String payload){ publish(topic,qos,retain, (uint8_t*) payload.c_str(), (size_t) payload.length(),false); }
                 void                setCleanSession(bool cleanSession){ _cleanSession = cleanSession; }
                 void                setClientId(const char* clientId){ _clientId = clientId; }
                 void                setCredentials(const char* username, const char* password = nullptr);
