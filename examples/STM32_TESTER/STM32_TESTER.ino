@@ -15,7 +15,7 @@ void onMqttConnect(bool sessionPresent) {
   mqttClient.publish("stm32",0,false,std::string("Oh my god it works"));
 }
 
-void onMqttMessage(const char* topic, uint8_t* payload, struct PANGO_PROPS props, size_t len, size_t index, size_t total) {
+void onMqttMessage(const char* topic, const uint8_t* payload, size_t len,uint8_t qos,bool retain,bool dup) {
   PANGO::dumphex(payload,len);
 }
 

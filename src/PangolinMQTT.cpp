@@ -25,15 +25,6 @@ SOFTWARE.
 #include <PangolinMQTT.h>
 #include "Packet.h"
 
-/*
-template<char*&>
-void PangolinMQTT::xPayload(const uint8_t* payload,size_t len,char*& cp) {
-    char* p=reinterpret_cast<char*>(malloc(len+1));
-    memcpy(p,payload,len);
-    p[len]='\0';
-    cp=p;
-}
-*/
 std::string          PangolinMQTT::_username;
 std::string          PangolinMQTT::_password;
 std::string          PangolinMQTT::_willTopic;
@@ -84,10 +75,7 @@ void PangolinMQTT::_destroyClient(){
     }
 }
 
-void PangolinMQTT::_hpDespatch(mb m){
-//    Serial.printf("_hpDespatch %s id=%d @ QoS%d R=%s DUP=%d PL@%08X PLEN=%d\n",m.topic.c_str(),m.id,m.qos,m.retain ? "true":"false",m.dup,m.payload,m.plen);
-    if(_cbMessage) _cbMessage(m.topic.c_str(), m.payload, PANGO_PROPS_t {m.qos,m.dup,m.retain}, m.plen, 0, m.plen);
-}
+void PangolinMQTT::_hpDespatch(mb m){ if(_cbMessage) _cbMessage(m.topic.c_str(), m.payload, m.plen, m.qos, m.retain, m.dup); }
 
 void PangolinMQTT::_onDisconnect(int8_t r) {
     PANGO_PRINT("DISCONNECT FH=%u r=%d\n",PANGO::_HAL_getFreeHeap(),r);
@@ -104,14 +92,7 @@ void PangolinMQTT::_notify(uint8_t e,int info){
     PANGO_PRINT("NOTIFY e=%d inf=%d\n",e,info);
     if(_cbError) _cbError(e,info);
 }
-/*
-void PangolinMQTT::_fatal(uint8_t e,int info){
-    if(_cbError) _cbError(e,info);
-    PANGO::TCP->close(true);
-    Serial.printf("FATAL ERROR %d INFO=%d - POWER CYCLE REQUIRED\n",e,info);
-    while(1) PANGO::_HAL_feedWatchdog();
-}
-*/
+
 void PangolinMQTT::_handlePublish(mb m){
     PANGO_PRINT("_handlePublish %s id=%d @ QoS%d R=%s DUP=%d PL@%08X PLEN=%d\n",m.topic.c_str(),m.id,m.qos,m.retain ? "true":"false",m.dup,m.payload,m.plen);
     switch(m.qos){
@@ -159,7 +140,7 @@ void PangolinMQTT::_handlePacket(mb m){
             if(_cbUnsubscribe) _cbUnsubscribe(id);
             break;
         case PUBACK:
-            Packet::ACKoutbound(id);
+            Packet::_ACKoutbound(id);
             if(_cbPublish) _cbPublish(id);
             break;
         case PUBREC:
@@ -178,7 +159,7 @@ void PangolinMQTT::_handlePacket(mb m){
             }
             break;
         case PUBCOMP:
-            Packet::ACKoutbound(id);
+            Packet::_ACKoutbound(id);
             if(_cbPublish) _cbPublish(id);
             break;
         default:
@@ -290,7 +271,7 @@ void PangolinMQTT::_onPoll(AsyncClient* client) {
 }
 
 void PangolinMQTT::connect() {
-    if(PANGO::TCP) return;
+    if(PANGO::TCP) return; // error?
     if(_clientId=="") _clientId=PANGO::_HAL_getUniqueId();
     PANGO_PRINT("CONNECT as %s FH=%u session=%d\n",_clientId.c_str(),PANGO::_HAL_getFreeHeap(),_cleanSession);
     if(_cleanSession) _cleanStart();
@@ -332,23 +313,23 @@ void PangolinMQTT::connect() {
 
 void PangolinMQTT::disconnect(bool force) {
     PANGO_PRINT("USER DCX\n");
-    if (!PANGO::TCP) return;
-    DisconnectPacket dp{};
+    if(PANGO::TCP) DisconnectPacket dp{};
+    else _notify(TCP_DISCONNECTED);
 }
 
 void PangolinMQTT::subscribe(const char* topic, uint8_t qos) {
-    if (!PANGO::TCP) return; // error
-    SubscribePacket sub(topic,qos);
+    if(PANGO::TCP) SubscribePacket sub(topic,qos);
+    else _notify(TCP_DISCONNECTED);
 }
 
 void PangolinMQTT::unsubscribe(const char* topic) {
-    if (!PANGO::TCP) return; // error
-    UnsubscribePacket usp(topic);
+    if(PANGO::TCP) UnsubscribePacket usp(topic);
+    else _notify(TCP_DISCONNECTED);
 }
 
 void PangolinMQTT::publish(const char* topic, const uint8_t* payload, size_t length, uint8_t qos, bool retain) {
-    if (!PANGO::TCP) return; // error this!
-    PublishPacket pub(topic,qos,retain,payload,length,0,0);
+    if(PANGO::TCP) PublishPacket pub(topic,qos,retain,payload,length,0,0);
+    else _notify(TCP_DISCONNECTED);
 }
 // just because so many folk don't know the difference...sigh
 void PangolinMQTT::publish(const char* topic, const char* payload, size_t length, uint8_t qos, bool retain) {

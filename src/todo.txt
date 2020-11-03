@@ -2,7 +2,6 @@ SOONEST:
 SOON:
     debug levels
 MEDIUM-TERM:
-    change blox to mb 
     async statics to PANGO
     coalesce templates wehn c++17 if constexpr available
 DREAMLAND:

@@ -72,23 +72,13 @@ enum PANGO_FAILURE : uint8_t {
     MQTT_SERVER_UNAVAILABLE,
     UNRECOVERABLE_CONNECT_FAIL,
     TLS_BAD_FINGERPRINT,
-    TCP_TIMEOUT,
     SUBSCRIBE_FAIL,
-    INBOUND_QOS_FAIL,
-    OUTBOUND_QOS_FAIL,
     INBOUND_QOS_ACK_FAIL,
     OUTBOUND_QOS_ACK_FAIL,
     INBOUND_PUB_TOO_BIG,
     OUTBOUND_PUB_TOO_BIG,
     BOGUS_PACKET,
-    BOGUS_ACK,
     X_INVALID_LENGTH
-};
-
-struct PANGO_PROPS {
-  uint8_t qos;
-  bool dup;
-  bool retain;
 };
 
 #include"PANGO.h" // common namespace
@@ -140,12 +130,9 @@ struct PANGO_PROPS {
 using PANGO_DELAYED_FREE   = uint8_t*;
 using ADFP                 = PANGO_DELAYED_FREE; // SOOO much less typing - PANGO "delayed free" pointer
 
-using PANGO_BLOCK          = std::pair<size_t,uint8_t*>; // small sized ptr used internally by Packet class UPSCALE ANYWAY?
 using PANGO_FN_VOID        = std::function<void(void)>;
 using PANGO_FN_U8PTR       = std::function<void(uint8_t*,mb* base)>;
 using PANGO_FN_U8PTRU8     = std::function<uint8_t*(uint8_t*)>;
-using PANGO_BLOCK_Q        = std::queue<PANGO_BLOCK>;
-using PANGO_PROPS_t        = struct PANGO_PROPS;
 
 #include"mb.h"
 
@@ -153,7 +140,7 @@ using PANGO_PACKET_MAP      =std::map<uint16_t,mb>; // indexed by messageId
 using PANGO_cbConnect       =std::function<void(bool)>;
 using PANGO_cbDisconnect    =std::function<void(int8_t)>;
 using PANGO_cbError         =std::function<void(uint8_t,int)>;
-using PANGO_cbMessage       =std::function<void(const char*, uint8_t*, PANGO_PROPS_t , size_t, size_t, size_t)>;
+using PANGO_cbMessage       =std::function<void(const char* topic, const uint8_t* payload, size_t len,uint8_t qos,bool retain,bool dup)>;
 using PANGO_cbPublish       =std::function<void(uint16_t packetId)>;
 using PANGO_cbSubscribe     =std::function<void(uint16_t, uint8_t)>;
 using PANGO_cbUnsubscribe   =std::function<void(uint16_t)>;
@@ -206,7 +193,6 @@ class PangolinMQTT {
     public:
         PangolinMQTT();
                 void                connect();
-                bool                connected(){ return PANGO::TCP; };
                 void                disconnect(bool force = false);
                 const char*         getClientId(){ return _clientId.c_str(); }
                 size_t inline       getMaxPayloadSize(){ return (PANGO::_HAL_getFreeHeap() / 2) - PANGO_HEAP_SAFETY; }
@@ -268,12 +254,9 @@ class PangolinMQTT {
                 void                subscribe(const char* topic, uint8_t qos);
                 void                unsubscribe(const char* topic);
 //
-//
-//
 #if ASYNC_TCP_SSL_ENABLED
                 void                serverFingerprint(const uint8_t* fingerprint);
 #endif
-
 //
 //              DO NOT CALL ANY FUNCTION STARTING WITH UNDERSCORE!!! _
 //

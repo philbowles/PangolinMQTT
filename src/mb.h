@@ -58,6 +58,6 @@ class mb {
                 void            clear();
                 bool inline     isPub(){ return (data[0] & 0xf0) == 0x30; };
                 void            manage();
-        inline  uint8_t*        start () { return data+1+offset; }
+        inline  uint8_t*        start() { return data+1+offset; }
         void dump();
 };

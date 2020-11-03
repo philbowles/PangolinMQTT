@@ -25,7 +25,7 @@ SOFTWARE.
 #pragma once
 #include <PangolinMQTT.h>
 
-enum ASYNC_MQTT_CNX_FLAG : uint8_t {
+enum PANGO_MQTT_CNX_FLAG : uint8_t {
     USERNAME      = 0x80,
     PASSWORD      = 0x40,
     WILL_RETAIN   = 0x20,
@@ -35,6 +35,9 @@ enum ASYNC_MQTT_CNX_FLAG : uint8_t {
     CLEAN_SESSION = 0x02
 };
 
+using PANGO_BLOCK          = std::pair<size_t,uint8_t*>; // small sized ptr used internally by Packet class
+using PANGO_BLOCK_Q        = std::queue<PANGO_BLOCK>;
+
 class Packet {
     friend class PangolinMQTT;
     protected:
@@ -43,31 +46,27 @@ class Packet {
                 uint8_t          _hdrAdjust;
                 bool             _hasId=false;
                 uint8_t          _controlcode;
-                PANGO_BLOCK_Q     _blox;
+                PANGO_BLOCK_Q    _blox;
                 uint32_t         _bs=0;
-                PANGO_FN_VOID     _begin=[]{};
-                PANGO_FN_U8PTRU8  _middle=[](uint8_t* p){ return p; };
-                PANGO_FN_U8PTR    _end=[](uint8_t* p,mb* base){};
+                PANGO_FN_VOID    _begin=[]{};
+                PANGO_FN_U8PTRU8 _middle=[](uint8_t* p){ return p; };
+                PANGO_FN_U8PTR   _end=[](uint8_t* p,mb* base){};
 
         static  void             _ACK(PANGO_PACKET_MAP* m,uint16_t id,bool inout); // inout true=INBOUND false=OUTBOUND
-                uint8_t*         _block(size_t size);
+        static  void             _ACKoutbound(uint16_t id){ _ACK(&_outbound,id,false); }
                 void	         _build(bool hold=false);
         static  void             _resendPartialTxns();
                 void             _idGarbage(uint16_t id);
                 void             _initId();
-                uint8_t*         _mem(const void* v,size_t size);
                 uint8_t*         _poke16(uint8_t* p,uint16_t u);
-                std::vector<uint8_t> _rl(uint32_t X);
                 void             _shortGarbage();
-                uint8_t*         _stringblock(const std::string& s){ return _mem(s.data(),s.size()); }
+                uint8_t*         _stringblock(const std::string& s);
             
     public:
         static  PANGO_PACKET_MAP  _outbound;
         static  PANGO_PACKET_MAP  _inbound;
 
         Packet(uint8_t controlcode,uint8_t adj=0,bool hasid=false): _controlcode(controlcode),_hdrAdjust(adj),_hasId(hasid){}
-
-        static  void             ACKoutbound(uint16_t id){ /*PANGO_PRINT("ACK O/B %d\n",id);*/ _ACK(&_outbound,id,false); }
 };
 class ConnectPacket: public Packet {
             uint8_t  protocol[8]={0x0,0x4,'M','Q','T','T',4,0}; // 3.1.1
@@ -84,22 +83,22 @@ class DisconnectPacket: public Packet {
 };
 class PubackPacket: public Packet {
     public:
-        PubackPacket(uint16_t id): Packet(PUBACK) { /*PANGO_PRINT("OUT PUBACK FOR ID %d\n",id);*/ _idGarbage(id); }
+        PubackPacket(uint16_t id): Packet(PUBACK) { _idGarbage(id); }
 };
 class PubrecPacket: public Packet {
     public:
-        PubrecPacket(uint16_t id): Packet(PUBREC) { /*PANGO_PRINT("OUT PUBREC FOR ID %d\n",id);*/ _idGarbage(id); }
+        PubrecPacket(uint16_t id): Packet(PUBREC) { _idGarbage(id); }
 };
 class PubrelPacket: public Packet {
     public:
-        PubrelPacket(uint16_t id): Packet(PUBREL) { /*PANGO_PRINT("OUT PUBREL FOR ID %d\n",id);*/ _idGarbage(id); }
+        PubrelPacket(uint16_t id): Packet(PUBREL) { _idGarbage(id); }
 };
 class PubcompPacket: public Packet {
     public:
-        PubcompPacket(uint16_t id): Packet(PUBCOMP) { /*PANGO_PRINT("OUT PUBCOMP FOR ID %d\n",id);*/ _idGarbage(id); }  
+        PubcompPacket(uint16_t id): Packet(PUBCOMP) { _idGarbage(id); }  
 };
 class SubscribePacket: public Packet {
-        std::string          _topic;
+        std::string     _topic;
     public:
         uint8_t         _qos;
         SubscribePacket(const std::string& topic,uint8_t qos): _topic(topic),_qos(qos),Packet(SUBSCRIBE,1,true) {
@@ -110,7 +109,7 @@ class SubscribePacket: public Packet {
         }
 };
 class UnsubscribePacket: public Packet {
-        std::string          _topic;
+        std::string     _topic;
     public:
         UnsubscribePacket(const std::string& topic): _topic(topic),Packet(UNSUBSCRIBE,0,true) {
             _id=++_nextId;

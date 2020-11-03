@@ -92,8 +92,8 @@ void onMqttDisconnect(int8_t reason) {
   }
 }
 
-void onMqttMessage(const char* topic, uint8_t* payload, struct PANGO_PROPS props, size_t len, size_t index, size_t total) {
-  Serial.printf("T=%u Message %s qos%d dup=%d retain=%d len=%d elapsed=%u\n",millis(),topic,props.qos,props.dup,props.retain,len,millis()-elapsed);
+void onMqttMessage(const char* topic, const uint8_t* payload, size_t len,uint8_t qos,bool retain,bool dup) {
+  Serial.printf("T=%u Message %s len=%d qos%d dup=%d retain=%d elapsed=%u\n",millis(),topic,len,qos,retain,dup,millis()-elapsed);
   PANGO::dumphex(payload,len,16);
 }
 

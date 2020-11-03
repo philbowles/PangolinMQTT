@@ -28,8 +28,6 @@ uint16_t                            Packet::_nextId=1000;
 PANGO_PACKET_MAP                    Packet::_inbound;
 PANGO_PACKET_MAP                    Packet::_outbound;
 
-// protect this
-
 void Packet::_ACK(PANGO_PACKET_MAP* m,uint16_t id,bool inout){ /// refakta?
     if(m->count(id)){
         ((*m)[id]).clear(); // THIS is where the memory leaks get mopped up!
@@ -37,20 +35,23 @@ void Packet::_ACK(PANGO_PACKET_MAP* m,uint16_t id,bool inout){ /// refakta?
     } else PANGO::LIN->_notify(inout ? INBOUND_QOS_ACK_FAIL:OUTBOUND_QOS_ACK_FAIL,id); //PANGO_PRINT("WHO TF IS %d???\n",id);
 }
 
-uint8_t* Packet::_block(size_t size){
-    _bs+=size+2;
-    _blox.push(std::make_pair(size,static_cast<uint8_t*>(malloc(size))));
-    return _blox.back().second;
-}
-
 void Packet::_build(bool hold){
     mb m{}; // empty message block
     _begin();
     uint32_t sx=_bs+_hdrAdjust;
     if(_hasId) sx+=2;
-    std::vector<uint8_t> rl=_rl(sx);
+    // calc rl
+    uint32_t X=sx;
+    std::vector<uint8_t> rl;
+    uint8_t encodedByte;
+    do{
+        encodedByte = X % 128;
+        X = X / 128;
+        if ( X > 0 ) encodedByte = encodedByte | 128;
+        rl.push_back(encodedByte);
+    } while ( X > 0 );
     sx+=1+rl.size();
- 
+    
     ADFP snd_buf=m.data=(static_cast<ADFP>(malloc(sx))); // Not a memleak - will be free'd when TCP ACKs it.
     
     *snd_buf++=_controlcode;
@@ -92,7 +93,7 @@ void Packet::_resendPartialTxns(){
             morituri.push_back(m.id); // all hope exhausted TODO: reconnect?
         }
     }
-   for(auto const& i:morituri) ACKoutbound(i);
+   for(auto const& i:morituri) _ACKoutbound(i);
 }
 
 void Packet::_idGarbage(uint16_t id){
@@ -104,33 +105,10 @@ void Packet::_idGarbage(uint16_t id){
     // Do NOT free p here!!! Gets freed by mb.clear() @ ack time
 }
 
-uint8_t* Packet::_mem(const void* v,size_t size){
-    if(size){
-        _bs+=size+2;
-        uint8_t* p=static_cast<uint8_t*>(malloc(size));
-        _blox.push(std::make_pair(size,p));
-        memcpy(p,v,size);
-        return p;
-    }
-    return nullptr;
-}
-
 uint8_t* Packet::_poke16(uint8_t* p,uint16_t u){
     *p++=(u & 0xff00) >> 8;
     *p++=u & 0xff;
     return p;
-}
-
-std::vector<uint8_t> Packet::_rl(uint32_t X){
-    std::vector<uint8_t> rl;
-    uint8_t encodedByte;
-    do{
-        encodedByte = X % 128;
-        X = X / 128;
-        if ( X > 0 ) encodedByte = encodedByte | 128;
-        rl.push_back(encodedByte);
-    } while ( X> 0 );
-    return rl;
 }
 
 void Packet::_shortGarbage(){
@@ -138,6 +116,15 @@ void Packet::_shortGarbage(){
     p[0]=_controlcode;
     p[1]=_controlcode=0;
     PANGO::_txPacket(mb(p,true));
+}
+
+uint8_t* Packet::_stringblock(const std::string& s){ 
+    size_t sz=s.size();
+    _bs+=sz+2;
+    uint8_t* p=static_cast<uint8_t*>(malloc(sz));
+    _blox.push(std::make_pair(sz,p));
+    memcpy(p,s.data(),sz);
+    return p;
 }
 
 ConnectPacket::ConnectPacket(): Packet(CONNECT,10){
