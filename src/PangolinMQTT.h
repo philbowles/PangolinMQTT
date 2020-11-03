@@ -22,14 +22,17 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-#pragma once
+//#pragma once
+#ifndef __PANGOLIN_MQTT__
+#define __PANGOLIN_MQTT__
 
 #include"config.h"
 #include<Arduino.h>
 #include<functional>
 #include<string>
 #include<map>
-#include <queue>
+#include<queue>
+#include<type_traits>
 
 #ifdef ARDUINO_ARCH_ESP32
 #include <AsyncTCP.h>
@@ -78,7 +81,8 @@ enum PANGO_FAILURE : uint8_t {
     INBOUND_PUB_TOO_BIG,
     OUTBOUND_PUB_TOO_BIG,
     BOGUS_PACKET,
-    BOGUS_ACK
+    BOGUS_ACK,
+    X_INVALID_LENGTH
 };
 
 struct PANGO_PROPS {
@@ -213,9 +217,47 @@ class PangolinMQTT {
                 void                onPublish(PANGO_cbPublish callback){ _cbPublish=callback; }
                 void                onSubscribe(PANGO_cbSubscribe callback){ _cbSubscribe=callback; }
                 void                onUnsubscribe(PANGO_cbUnsubscribe callback){ _cbUnsubscribe=callback; }
-                uint16_t            publish(const char* topic, uint8_t qos, bool retain, uint8_t* payload, size_t length, bool dup); // <- stupid!!!
-                void                publish(const char* topic, uint8_t qos, bool retain, std::string payload){ publish(topic,qos,retain, (uint8_t*) payload.data(), (size_t) payload.size()+1,false); }
-                void                publish(const char* topic, uint8_t qos, bool retain, String payload){ publish(topic,qos,retain, (uint8_t*) payload.c_str(), (size_t) payload.length()+1,false); }
+                void                publish(const char* topic,const uint8_t* payload, size_t length, uint8_t qos=0,  bool retain=false);
+                void                publish(const char* topic,const char* payload, size_t length, uint8_t qos=0,  bool retain=false);
+//              Coalesce templates when C++17 available (if constexpr (x))
+                void xPublish(const char* topic,const char* value, uint8_t qos=0,  bool retain=false) {
+                    publish(topic,reinterpret_cast<const uint8_t*>(value),strlen(value),qos,retain);
+                }
+                void xPublish(const char* topic,String value, uint8_t qos=0,  bool retain=false) {
+                    publish(topic,reinterpret_cast<const uint8_t*>(value.c_str()),value.length(),qos,retain);
+                }
+                void xPublish(const char* topic,std::string value, uint8_t qos=0,  bool retain=false) {
+                    publish(topic,reinterpret_cast<const uint8_t*>(value.c_str()),value.size(),qos,retain);
+                }
+                template<typename T>
+                void xPublish(const char* topic,T value, uint8_t qos=0,  bool retain=false) {
+                    publish(topic,reinterpret_cast<uint8_t*>(&value),sizeof(T),qos,retain);
+                }
+                void xPayload(const uint8_t* payload,size_t len,char*& cp) {
+                    char* p=reinterpret_cast<char*>(malloc(len+1));
+                    memcpy(p,payload,len);
+                    p[len]='\0';
+                    cp=p;
+                }
+                void xPayload(const uint8_t* payload,size_t len,std::string& ss) {
+                    char* cp;
+                    xPayload(payload,len,cp);
+                    ss.assign(cp,strlen(cp));
+                    free(cp);
+                }
+                void xPayload(const uint8_t* payload,size_t len,String& duino) {
+                    char* cp;
+                    xPayload(payload,len,cp);
+                    duino+=cp;
+                    free(cp);
+                }
+
+                template<typename T>
+                void xPayload(const uint8_t* payload,size_t len,T& value) {
+                    if(len==sizeof(T)) memcpy(reinterpret_cast<T*>(&value),payload,sizeof(T));
+                    else _notify(X_INVALID_LENGTH,len);
+                }
+//
                 void                setCleanSession(bool cleanSession){ _cleanSession = cleanSession; }
                 void                setClientId(const char* clientId){ _clientId = clientId; }
                 void                setCredentials(const char* username, const char* password = nullptr);
@@ -223,8 +265,8 @@ class PangolinMQTT {
                 void                setServer(IPAddress ip, uint16_t port);
                 void                setServer(const char* host, uint16_t port);
                 void                setWill(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr);
-                uint16_t            subscribe(const char* topic, uint8_t qos);
-                uint16_t            unsubscribe(const char* topic);
+                void                subscribe(const char* topic, uint8_t qos);
+                void                unsubscribe(const char* topic);
 //
 //
 //
@@ -237,6 +279,6 @@ class PangolinMQTT {
 //              DO NOT CALL ANY FUNCTION STARTING WITH UNDERSCORE!!! _
 //
                 void                _handlePacket(mb);
-                void                _fatal(uint8_t e,int info=0);
                 void                _notify(uint8_t e,int info=0);
 };
+#endif

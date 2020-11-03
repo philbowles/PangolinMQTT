@@ -103,7 +103,7 @@ const char* PANGO::_HAL_getUniqueId(){
 }
 #elif defined(ARDUINO_ARCH_ESP32)
 void PANGO::_HAL_feedWatchdog(){}
-uint32_t PANGO::_HAL_getFreeHeap(){ return ESP.getFreeHeap(); }
+uint32_t PANGO::_HAL_getFreeHeap(){ return ESP.getMaxFreeBlockSize(); }
 const char* PANGO::_HAL_getUniqueId(){
     static char buf[19];
     sprintf(buf, "esp32-%12llX", ESP.getEfuseMac());
@@ -111,7 +111,7 @@ const char* PANGO::_HAL_getUniqueId(){
 }
 #else
 void PANGO::_HAL_feedWatchdog(){ ESP.wdtFeed(); }
-uint32_t PANGO::_HAL_getFreeHeap(){ return ESP.getFreeHeap(); }
+uint32_t PANGO::_HAL_getFreeHeap(){ return ESP.getMaxFreeBlockSize(); }
 const char* PANGO::_HAL_getUniqueId(){
     static char buf[15];
     sprintf(buf, "esp8266-%06X", ESP.getChipId());

@@ -127,5 +127,5 @@ class PublishPacket: public Packet {
         bool            _dup;
         uint16_t        _givenId=0;
     public:
-        PublishPacket(const char* topic, uint8_t qos, bool retain, uint8_t* payload, size_t length, bool dup,uint16_t givenId=0);
+        PublishPacket(const char* topic, uint8_t qos, bool retain, const uint8_t* payload, size_t length, bool dup,uint16_t givenId=0);
 };

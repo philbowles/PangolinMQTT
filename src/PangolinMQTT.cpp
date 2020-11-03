@@ -25,6 +25,15 @@ SOFTWARE.
 #include <PangolinMQTT.h>
 #include "Packet.h"
 
+/*
+template<char*&>
+void PangolinMQTT::xPayload(const uint8_t* payload,size_t len,char*& cp) {
+    char* p=reinterpret_cast<char*>(malloc(len+1));
+    memcpy(p,payload,len);
+    p[len]='\0';
+    cp=p;
+}
+*/
 std::string          PangolinMQTT::_username;
 std::string          PangolinMQTT::_password;
 std::string          PangolinMQTT::_willTopic;
@@ -95,14 +104,14 @@ void PangolinMQTT::_notify(uint8_t e,int info){
     PANGO_PRINT("NOTIFY e=%d inf=%d\n",e,info);
     if(_cbError) _cbError(e,info);
 }
-
+/*
 void PangolinMQTT::_fatal(uint8_t e,int info){
     if(_cbError) _cbError(e,info);
     PANGO::TCP->close(true);
     Serial.printf("FATAL ERROR %d INFO=%d - POWER CYCLE REQUIRED\n",e,info);
     while(1) PANGO::_HAL_feedWatchdog();
 }
-
+*/
 void PangolinMQTT::_handlePublish(mb m){
     PANGO_PRINT("_handlePublish %s id=%d @ QoS%d R=%s DUP=%d PL@%08X PLEN=%d\n",m.topic.c_str(),m.id,m.qos,m.retain ? "true":"false",m.dup,m.payload,m.plen);
     switch(m.qos){
@@ -131,11 +140,11 @@ void PangolinMQTT::_handlePacket(mb m){
 //    PANGO_PRINT("_handlePacket %s %08x len=%d id=%d, i=%08X\n",PANGO::getPktName(m.data[0]),m.data,m.len,id,i);
     switch (m.data[0]){
         case CONNACK:
-            if(i[1]) _fatal(UNRECOVERABLE_CONNECT_FAIL,i[1]);
+            if(i[1]) _notify(UNRECOVERABLE_CONNECT_FAIL,i[1]);
             else {
                 PANGO::_space=PANGO::TCP->space();
                 bool session=i[0] & 0x01;
-                Serial.printf("\nSESSION IS %s\n",session ? "DIRTY":"CLEAN");
+                PANGO_PRINT("\nSESSION IS %s\n",session ? "DIRTY":"CLEAN");
                 Packet::_resendPartialTxns();
                 PANGO_PRINT("CONNECTED FH=%u SH=%u\n",PANGO::_HAL_getFreeHeap(),getMaxPayloadSize());
                 if(_cbConnect) _cbConnect(session);
@@ -143,7 +152,7 @@ void PangolinMQTT::_handlePacket(mb m){
         case PINGRESP:
             break;
         case SUBACK:
-            if(i[2] & 0x80) _fatal(SUBSCRIBE_FAIL,id);
+            if(i[2] & 0x80) _notify(SUBSCRIBE_FAIL,id);
             else if(_cbSubscribe) _cbSubscribe(id,i[2]);
             break;
         case UNSUBACK:
@@ -294,7 +303,7 @@ void PangolinMQTT::connect() {
     if(PANGO::_secure) {
         SSL* clientSsl = PANGO::TCP->getSSL();
         if (ssl_match_fingerprint(clientSsl, _fingerprint) != SSL_OK) {
-            _fatal(TLS_BAD_FINGERPRINT);
+            _notify(TLS_BAD_FINGERPRINT);
             return;
         }
     }
@@ -329,22 +338,23 @@ void PangolinMQTT::disconnect(bool force) {
     DisconnectPacket dp{};
 }
 
-uint16_t PangolinMQTT::subscribe(const char* topic, uint8_t qos) {
-    if (!PANGO::TCP) return 0;
+void PangolinMQTT::subscribe(const char* topic, uint8_t qos) {
+    if (!PANGO::TCP) return; // error
     SubscribePacket sub(topic,qos);
-    return sub._id;
 }
 
-uint16_t PangolinMQTT::unsubscribe(const char* topic) {
-    if (!PANGO::TCP) return 0;
+void PangolinMQTT::unsubscribe(const char* topic) {
+    if (!PANGO::TCP) return; // error
     UnsubscribePacket usp(topic);
-    return usp._id;
 }
 
-uint16_t PangolinMQTT::publish(const char* topic, uint8_t qos, bool retain, uint8_t* payload, size_t length, bool dup) {
-    if (!PANGO::TCP) return 0;
-    PublishPacket pub(topic,qos,retain,payload,length,dup,0);
-    return pub._id; // 'kin pointless
+void PangolinMQTT::publish(const char* topic, const uint8_t* payload, size_t length, uint8_t qos, bool retain) {
+    if (!PANGO::TCP) return; // error this!
+    PublishPacket pub(topic,qos,retain,payload,length,0,0);
+}
+// just because so many folk don't know the difference...sigh
+void PangolinMQTT::publish(const char* topic, const char* payload, size_t length, uint8_t qos, bool retain) {
+    publish(topic, reinterpret_cast<const uint8_t*>(payload), length, qos, retain);
 }
 
 void PangolinMQTT::_cleanStart(){
