@@ -262,10 +262,8 @@ uint8_t* PangolinMQTT::_packetReassembler(mb m){
 
 void PangolinMQTT::_onData(uint8_t* data, size_t len) {
     uint8_t*    p=data;
-    uint8_t     offset=0;
     size_t      N=0;
     PANGO_PRINT("<---- FROM WIRE %s %08X len=%d\n",PANGO::getPktName(data[0]),data,len);
-//    PANGO::dumphex(data,len);
     PANGO::_resetPingTimers();
     do {
         p=_packetReassembler(mb(data+len-p,p));

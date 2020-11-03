@@ -26,39 +26,46 @@ SOFTWARE.
 
 PANG_MEM_POOL       mb::pool;
 
-mb::mb(size_t l,uint8_t* d,uint16_t i,ADFP f,bool track): len(l),id(i),data(d),frag(f),managed(track){ // always unmanaged - sould only be called by onData
+mb::mb(size_t l,uint8_t* d,uint16_t i,ADFP f,bool track): len(l),id(i),data(d),frag(f),managed(track){ // always unmanaged - should only be called by onData
 //    PANGO_PRINT("LONG-WINDED CTOR %08X len=%d managed=%d\n",d,l,managed);
     manage();
 }
 
 mb::mb(ADFP p, bool track): data(p),managed(track) {
-//    PANGO_PRINT("SKELETON %08X TYPE %s managed=%d\n",p,PANGO::getPktName(p[0]),managed);
-    std::pair<uint32_t,uint8_t> remlen=PANGO::_getRemainingLength(&data[1]); // demote
-    offset=remlen.second;
-//    rl=remlen.first; // mqtt "remaining length"
-    len=1+offset+remlen.first; // MQTT msg size
+    uint32_t multiplier = 1;
+    uint32_t value = 0;
+    uint8_t encodedByte;//,rl=0;
+    ADFP pp=&data[1];
+    do{
+        encodedByte = *pp++;
+        offset++;
+        value += (encodedByte & 0x7f) * multiplier;
+        multiplier *= 128;
+    } while ((encodedByte & 0x80) != 0);
+//    Serial.printf("GRL2***** value=%d len=%d\n",value,offset);
+    len=1+offset+value; // MQTT msg size
     manage();
-//    PANGO_PRINT("SKELETON %08X TYPE %s len=%d managed=%d\n",data,PANGO::getPktName(data[0]),len,managed);
+    PANGO_PRINT("SKELETON %08X TYPE %s len=%d managed=%d\n",data,PANGO::getPktName(data[0]),len,managed);
 //  type 0x30 only
     if(isPub()){
-        uint8_t     bits=data[0] & 0x0f;
+        uint8_t bits=data[0] & 0x0f;
         dup=(bits & 0x8) >> 3;
         qos=(bits & 0x6) >> 1;
         retain=bits & 0x1;
 
-        uint8_t* p=start();
+        uint8_t* ps=start();
         id=0;
-        size_t tlen=PANGO::_peek16(p);p+=2;
+        size_t tlen=PANGO::_peek16(ps);ps+=2;
         char c_topic[tlen+1];
-        memcpy(&c_topic[0],p,tlen);c_topic[tlen]='\0';
+        memcpy(&c_topic[0],ps,tlen);c_topic[tlen]='\0';
         topic.assign(&c_topic[0],tlen);
-        p+=tlen;
+        ps+=tlen;
         if(qos) {
-            id=PANGO::_peek16(p);
-            p+=2;
+            id=PANGO::_peek16(ps);
+            ps+=2;
         }
-        plen=data+len-p;
-        payload=p;
+        plen=data+len-ps;
+        payload=ps;
     }
 }
 
