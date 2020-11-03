@@ -41,12 +41,9 @@ namespace PANGO {
             uint32_t            _HAL_getFreeHeap();
             const char*         _HAL_getUniqueId();
 
-//            size_t              _ackSize(size_t N);
-
             void                _ackTCP(size_t len, uint32_t time);
             void                _clearFragments();
             void                _clearQ(PANGO_MSG_Q*);
-//            PANGO_REM_LENGTH    _getRemainingLength(uint8_t* p);
             uint16_t            _peek16(uint8_t* p){ return (*(p+1))|(*p << 8); }
             void                _release(mb);
             void                _resetPingTimers(){ /*Serial.printf("RPT!!! \n");*/_nPollTicks=_nSrvTicks=0; }
@@ -60,7 +57,7 @@ namespace PANGO {
             int                 payloadToInt(uint8_t* data,size_t len);
             std::string         payloadToStdstring(uint8_t* data,size_t len);
             String              payloadToString(uint8_t* data,size_t len);
-//#ifdef PANGO_DEBUG
+#ifdef PANGO_DEBUG
             std::map<uint8_t,char*> pktnames={
                 {0x10,"CONNECT"},
                 {0x20,"CONNACK"},
@@ -87,7 +84,7 @@ namespace PANGO {
                     return buf;
                 }
             }
-//#endif
+#endif
 }
 
 #if defined(ARDUINO_ARCH_STM32)
@@ -149,20 +146,7 @@ void PANGO::_clearQ(PANGO_MSG_Q* q){
         tmp.clear();
     }
 }
-/*
-PANGO_REM_LENGTH PANGO::_getRemainingLength(uint8_t* p){ // move to asmq
-    uint32_t multiplier = 1;
-    uint32_t value = 0;
-    uint8_t encodedByte,len=0;
-    do{
-        encodedByte = *p++;
-        len++;
-        value += (encodedByte & 0x7f) * multiplier;
-        multiplier *= 128;
-    } while ((encodedByte & 0x80) != 0);
-    return std::make_pair(value,len);
-}
-*/
+
 void PANGO::_release(mb m){
     if(m.len>_space) {
         uint16_t nFrags=m.len/_space+((m.len%_space) ? 1:0); // so we can mark the final fragment
@@ -218,32 +202,6 @@ void PANGO::dumphex(uint8_t* mem, size_t len,uint8_t W) {
     }
     Serial.println();
 }
-/*
-char* PANGO::payloadToCstring(uint8_t* data,size_t len){
-    uint8_t* buf=static_cast<uint8_t*>(malloc(len)); /// CALLER MUST FREE THIS!!!
-    memcpy(buf,data,len);
-    return (char*) buf;
-};
-
-int PANGO::payloadToInt(uint8_t* data,size_t len){
-    char* c=payloadToCstring(data,len);
-    int i=atoi(c);
-    free(c); // as all goood programmers MUST!
-    return i;
-}
-
-std::string PANGO::payloadToStdstring(uint8_t* data,size_t len){
-    char* c=payloadToCstring(data,len);
-    std::string s;
-    s.assign(c,len);
-    free(c); // as all goood programmers MUST!
-    return s;
-}
-
-String PANGO::payloadToString(uint8_t* data,size_t len){
-    return String(payloadToStdstring(data,len).c_str());
-}
-*/
 #ifdef PANGO_DEBUG
 void PANGO::dump(){ 
     PANGO_PRINT("DUMP ALL %d POOL BLOX\n",mb::pool.size());

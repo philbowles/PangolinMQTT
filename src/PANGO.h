@@ -31,7 +31,6 @@ class PangolinMQTT;
 class AsynClient;
 
 using PANGO_FRAGMENTS      = std::vector<mb>;
-using PANGO_REM_LENGTH     = std::pair<uint32_t,uint8_t>;
 using PANGO_MSG_Q          = std::queue<mb>;
 
 namespace PANGO {
@@ -54,7 +53,6 @@ namespace PANGO {
     extern void             _ackTCP(size_t len, uint32_t time);
     extern void             _clearFragments();
     extern void             _clearQ(PANGO_MSG_Q*);
-//    extern PANGO_REM_LENGTH _getRemainingLength(uint8_t* p);
     extern uint16_t         _peek16(uint8_t* p);
     extern void             _resetPingTimers();
     extern void             _runTXQ();
