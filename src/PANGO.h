@@ -60,7 +60,7 @@ namespace PANGO {
     extern void             _send(mb);
     extern void             _txPacket(mb);
 
-    extern void             dumphex(uint8_t* mem, size_t len,uint8_t W=16);
+    extern void             dumphex(const uint8_t* mem, size_t len,uint8_t W=16);
 
 #ifdef PANGO_DEBUG
     extern void             dump(); // null if no debug

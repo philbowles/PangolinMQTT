@@ -335,7 +335,13 @@ void PangolinMQTT::publish(const char* topic, const uint8_t* payload, size_t len
 void PangolinMQTT::publish(const char* topic, const char* payload, size_t length, uint8_t qos, bool retain) {
     publish(topic, reinterpret_cast<const uint8_t*>(payload), length, qos, retain);
 }
-
+/*
+void PangolinMQTT::publish(const char* topic,int i,const char* fmt,uint8_t qos,bool retain){
+    char buf[16];
+    sprintf(buf,fmt,i);
+    publish(topic, reinterpret_cast<const uint8_t*>(buf), strlen(buf), qos, retain);
+}
+*/
 void PangolinMQTT::_cleanStart(){
     for(auto &i:Packet::_inbound) i.second.clear();
     Packet::_inbound.clear();

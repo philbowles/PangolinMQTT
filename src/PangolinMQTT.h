@@ -22,9 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-//#pragma once
-#ifndef __PANGOLIN_MQTT__
-#define __PANGOLIN_MQTT__
+#pragma once
 
 #include"config.h"
 #include<Arduino.h>
@@ -205,6 +203,12 @@ class PangolinMQTT {
                 void                onUnsubscribe(PANGO_cbUnsubscribe callback){ _cbUnsubscribe=callback; }
                 void                publish(const char* topic,const uint8_t* payload, size_t length, uint8_t qos=0,  bool retain=false);
                 void                publish(const char* topic,const char* payload, size_t length, uint8_t qos=0,  bool retain=false);
+                template<typename T>
+                void publish(const char* topic,T v,const char* fmt="%d",uint8_t qos=0,bool retain=false){
+                    char buf[16];
+                    sprintf(buf,fmt,v);
+                    publish(topic, reinterpret_cast<const uint8_t*>(buf), strlen(buf), qos, retain);
+                }
 //              Coalesce templates when C++17 available (if constexpr (x))
                 void xPublish(const char* topic,const char* value, uint8_t qos=0,  bool retain=false) {
                     publish(topic,reinterpret_cast<const uint8_t*>(value),strlen(value),qos,retain);
@@ -263,4 +267,3 @@ class PangolinMQTT {
                 void                _handlePacket(mb);
                 void                _notify(uint8_t e,int info=0);
 };
-#endif

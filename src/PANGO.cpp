@@ -52,11 +52,7 @@ namespace PANGO {
             void                _send(mb);
             void                _txPacket(mb);
 //
-            void                dumphex(uint8_t* mem, size_t len,uint8_t W);
-            char*               payloadToCstring(uint8_t* data,size_t len);
-            int                 payloadToInt(uint8_t* data,size_t len);
-            std::string         payloadToStdstring(uint8_t* data,size_t len);
-            String              payloadToString(uint8_t* data,size_t len);
+            void                dumphex(const uint8_t* mem, size_t len,uint8_t W);
 #ifdef PANGO_DEBUG
             std::map<uint8_t,char*> pktnames={
                 {0x10,"CONNECT"},
@@ -185,8 +181,9 @@ void  PANGO::_txPacket(mb m){
 //
 //  PUBLIC
 //
-void PANGO::dumphex(uint8_t* mem, size_t len,uint8_t W) {
-    uint8_t* src = mem;
+void PANGO::dumphex(const uint8_t* mem, size_t len,uint8_t W) {
+    uint8_t* src;
+    memcpy(&src,&mem,sizeof(uint8_t*));
     Serial.printf("Address: 0x%08X len: 0x%X (%d)", (ptrdiff_t)src, len, len);
     for(uint32_t i = 0; i < len; i++) {
         if(i % W == 0) Serial.printf("\n[0x%08X] 0x%08X: ", (ptrdiff_t)src, i);
