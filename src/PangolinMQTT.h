@@ -271,7 +271,6 @@ class PangolinMQTT {
 //
 //
 #if ASYNC_TCP_SSL_ENABLED
-//                void                setSecure(bool secure){ _secure=secure; }
                 void                serverFingerprint(const uint8_t* fingerprint);
 #endif
 
