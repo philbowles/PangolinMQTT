@@ -16,8 +16,8 @@
  * c) Three additional user timers
  * d) a default error handler   
 */
-#define LIBRARY "PangolinMQTT "PANGO_VERSION
 #include <PangolinMQTT.h> 
+#define LIBRARY "PangolinMQTT "PANGO_VERSION
 PangolinMQTT mqttClient;
 
 #define RECONNECT_DELAY_M   5
