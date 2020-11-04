@@ -16,8 +16,8 @@
  * c) Three additional user timers
  * d) a default error handler   
 */
-#define LIBRARY "PangolinMQTT "PANGO_VERSION
 #include <PangolinMQTT.h> 
+#define LIBRARY "PangolinMQTT "PANGO_VERSION
 PangolinMQTT mqttClient;
 
 #define RECONNECT_DELAY_M   5
@@ -129,12 +129,7 @@ void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
 }
 #endif
 
-void onMqttDisconnect(int8_t reason) {
-  Serial.printf("Disconnected from MQTT reason=%d\n",reason);
-  if (WiFi.isConnected()) {
-    mqttReconnectTimer.once(RECONNECT_DELAY_M, connectToMqtt);
-  }
-}
+extern void onMqttDisconnect(int8_t reason);
 
 void setup() {
   Serial.begin(115200);
