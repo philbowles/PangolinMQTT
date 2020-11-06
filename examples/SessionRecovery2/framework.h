@@ -20,6 +20,15 @@
 #define LIBRARY "PangolinMQTT "PANGO_VERSION
 PangolinMQTT mqttClient;
 
+#if ASYNC_TCP_SSL_ENABLED
+#pragma message("FRAMEWORK SSL ENABLED *********************")
+#define MQTT_PORT 8883
+const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,0xb1,0xa5,0x97,0xba,0x65,0x8c,0x20,0x5a,0x9c,0xfa };
+#else
+#pragma message("FRAMEWORK SSL NOT USED !!!!!!!!!!!!!!!!!!!!")
+#define MQTT_PORT 1883
+#endif
+
 #define RECONNECT_DELAY_M   5
 #define RECONNECT_DELAY_W   5
 
@@ -62,6 +71,8 @@ extern void userSetup();
 extern void onMqttConnect(bool);
 extern void onMqttMessage(const char* topic, const uint8_t* payload, size_t len,uint8_t qos,bool retain,bool dup);
 
+extern const char* mqAuth;
+extern const char* mqPass;
 /*
     default error handling
 */
@@ -151,9 +162,9 @@ void setup() {
   mqttClient.onError(onMqttError);
   mqttClient.setCleanSession(START_WITH_CLEAN_SESSION);
   mqttClient.setKeepAlive(RECONNECT_DELAY_M *3);
-#ifdef USE_TLS
+  if(mqAuth!="") mqttClient.setCredentials(mqAuth,mqPass);
+#if ASYNC_TCP_SSL_ENABLED
   mqttClient.serverFingerprint(cert);
-  //mqttClient.setCredentials("your username","your password"); // if required
 #endif
   
   connectToWifi();

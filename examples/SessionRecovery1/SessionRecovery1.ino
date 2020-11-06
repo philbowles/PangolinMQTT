@@ -12,7 +12,7 @@
  *  
  */                    
 
-//#define USE_TLS
+//#define ASYNC_TCP_SSL_ENABLED
 
 #include<set>
 
@@ -21,7 +21,7 @@
 
 #define MQTT_HOST IPAddress(192, 168, 1, 4)
 
-#ifdef USE_TLS
+#ifdef ASYNC_TCP_SSL_ENABLED
 #define MQTT_PORT 8883
 const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,0xb1,0xa5,0x97,0xba,0x65,0x8c,0x20,0x5a,0x9c,0xfa };
 #else

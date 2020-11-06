@@ -22,6 +22,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+#include"config.h"
+
 #include <PangolinMQTT.h>
 #include "Packet.h"
 
@@ -61,12 +63,11 @@ void PangolinMQTT::setServer(const char* host, uint16_t port) {
   _port = port;
 }
 //
-#if ASYNC_TCP_SSL_ENABLED
 void PangolinMQTT::serverFingerprint(const uint8_t* fingerprint) {
     memcpy(_fingerprint, fingerprint, SHA1_SIZE);
     PANGO::_secure=true;
 }
-#endif
+
 void PangolinMQTT::_destroyClient(){
     if(PANGO::TCP) {
         PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { }); // prevent recursion
@@ -278,15 +279,15 @@ void PangolinMQTT::connect() {
     PANGO::TCP=new AsyncClient;
     PANGO::TCP->setNoDelay(true);
     PANGO::TCP->onConnect([this](void* obj, AsyncClient* c) { 
-#if ASYNC_TCP_SSL_ENABLED
-    if(PANGO::_secure) {
-        SSL* clientSsl = PANGO::TCP->getSSL();
-        if (ssl_match_fingerprint(clientSsl, _fingerprint) != SSL_OK) {
-            _notify(TLS_BAD_FINGERPRINT);
-            return;
+    #if ASYNC_TCP_SSL_ENABLED
+        if(PANGO::_secure) {
+            SSL* clientSsl = PANGO::TCP->getSSL();
+            if (ssl_match_fingerprint(clientSsl, _fingerprint) != SSL_OK) {
+                _notify(TLS_BAD_FINGERPRINT);
+                return;
+            }
         }
-    }
-#endif
+    #endif
         ConnectPacket cp{};
     }); // *NOT* A MEMORY LEAK! :)
     PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { PANGO_PRINT("TCP CHOPPED US!\n"); _onDisconnect(TCP_DISCONNECTED); });
@@ -295,20 +296,15 @@ void PangolinMQTT::connect() {
     PANGO::TCP->onData([this](void* obj, AsyncClient* c, void* data, size_t len) { _onData(static_cast<uint8_t*>(data), len); });
     PANGO::TCP->onPoll([this](void* obj, AsyncClient* c) { _onPoll(c); });
 // tidy this + whole _useIP bollocks
-#if ASYNC_TCP_SSL_ENABLED
-  if (_useIp) {
-    PANGO::TCP->connect(_ip, _port, PANGO::_secure);
-  } else {
-   PANGO::TCP->connect(_host.c_str(), _port, PANGO::_secure);
-  }
-#else
-  if (_useIp) {
-   PANGO::TCP->connect(_ip, _port);
-  } else {
-    PANGO::TCP->connect(_host.c_str(), _port);
-  }
-#endif
-
+    #if ASYNC_TCP_SSL_ENABLED
+        Serial.printf("SECURE CONNECTION to %s:%d\n",_ip.toString().c_str(),_port);
+        if (_useIp) PANGO::TCP->connect(_ip, _port, true);
+        else PANGO::TCP->connect(_host.c_str(), _port, true);
+    #else
+        Serial.printf("WARNING! *************8 INSECURE CONNECTION\n");
+        if (_useIp) PANGO::TCP->connect(_ip, _port);
+        else PANGO::TCP->connect(_host.c_str(), _port);
+    #endif
 }
 
 void PangolinMQTT::disconnect(bool force) {
@@ -335,13 +331,7 @@ void PangolinMQTT::publish(const char* topic, const uint8_t* payload, size_t len
 void PangolinMQTT::publish(const char* topic, const char* payload, size_t length, uint8_t qos, bool retain) {
     publish(topic, reinterpret_cast<const uint8_t*>(payload), length, qos, retain);
 }
-/*
-void PangolinMQTT::publish(const char* topic,int i,const char* fmt,uint8_t qos,bool retain){
-    char buf[16];
-    sprintf(buf,fmt,i);
-    publish(topic, reinterpret_cast<const uint8_t*>(buf), strlen(buf), qos, retain);
-}
-*/
+
 void PangolinMQTT::_cleanStart(){
     for(auto &i:Packet::_inbound) i.second.clear();
     Packet::_inbound.clear();

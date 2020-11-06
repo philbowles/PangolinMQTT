@@ -30,7 +30,16 @@ SOFTWARE.
 #include<string>
 #include<map>
 #include<queue>
-#include<type_traits>
+//#include<type_traits>
+
+#if ASYNC_TCP_SSL_ENABLED
+    #pragma message("Pangolin.h include tcp_axtls.h")
+    #include <tcp_axtls.h>
+    #define SHA1_SIZE 20
+#else
+    #pragma message("Pangolin.h NOT USING SSL/TLS")
+    #define SHA1_SIZE 0
+#endif
 
 #ifdef ARDUINO_ARCH_ESP32
 #include <AsyncTCP.h>
@@ -42,10 +51,6 @@ SOFTWARE.
 #error Platform not supported
 #endif
 
-#if ASYNC_TCP_SSL_ENABLED
-#include <tcp_axtls.h>
-#define SHA1_SIZE 20
-#endif
 
 #define CSTR(x) x.c_str()
 enum :uint8_t {
@@ -159,9 +164,7 @@ class PangolinMQTT {
                PANGO_cbPublish      _cbPublish=nullptr;
                PANGO_cbSubscribe    _cbSubscribe=nullptr;
                PANGO_cbUnsubscribe  _cbUnsubscribe=nullptr;
-#if ASYNC_TCP_SSL_ENABLED
                uint8_t             _fingerprint[SHA1_SIZE];
-#endif
         static bool                _cleanSession;
                std::string         _clientId;
                std::string         _host;
@@ -184,10 +187,6 @@ class PangolinMQTT {
                void                _onDisconnect(int8_t r);
                void                _onPoll(AsyncClient* client);
                uint8_t*            _packetReassembler(mb);
-
-#ifdef PANGO_DEBUG
-                void                debugHandler(uint8_t* payload,size_t length);
-#endif
     public:
         PangolinMQTT();
                 void                connect();
@@ -248,6 +247,7 @@ class PangolinMQTT {
                     else _notify(X_INVALID_LENGTH,len);
                 }
 //
+                void                serverFingerprint(const uint8_t* fingerprint);
                 void                setCleanSession(bool cleanSession){ _cleanSession = cleanSession; }
                 void                setClientId(const char* clientId){ _clientId = clientId; }
                 void                setCredentials(const char* username, const char* password = nullptr);
@@ -257,10 +257,6 @@ class PangolinMQTT {
                 void                setWill(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr);
                 void                subscribe(const char* topic, uint8_t qos);
                 void                unsubscribe(const char* topic);
-//
-#if ASYNC_TCP_SSL_ENABLED
-                void                serverFingerprint(const uint8_t* fingerprint);
-#endif
 //
 //              DO NOT CALL ANY FUNCTION STARTING WITH UNDERSCORE!!! _
 //

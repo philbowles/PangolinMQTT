@@ -234,9 +234,8 @@ void setup() {
   
   mqttClient.setCleanSession(START_WITH_CLEAN_SESSION);
   mqttClient.setKeepAlive(RECONNECT_DELAY_M *3);
-#ifdef USE_TLS
+#if ASYNC_TCP_SSL_ENABLED
   mqttClient.serverFingerprint(cert);
-  //mqttClient.setCredentials("your username","your password"); // if required
 #endif
   
   connectToWifi();

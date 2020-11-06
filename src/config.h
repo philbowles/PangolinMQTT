@@ -24,8 +24,10 @@ SOFTWARE.
 */
 #define PANGO_VERSION "1.0.0"
 
-//#define PANGO_DEBUG
+#define PANGO_DEBUG
 
+#define ASYNC_TCP_SSL_ENABLED 1
+#pragma message("CONFIG H DEFINES ASYNC_TCP_SSL_ENABLED 1")
 #ifdef PANGO_DEBUG
     #define PANGO_PRINT(...) Serial.printf(__VA_ARGS__)
 #else

@@ -7,25 +7,17 @@
  *  they may come back out-of-sequence, but as long as MQTT can keep up 
  *  ON AVERAGE then you will still always get them all. 
  */
-
-//#define USE_TLS
-
-#include<set>
 //
-//    Common to all sketches: necssary infrastructure
+//    Common to all sketches: necssary infrastructure identifiers
 //
 #define WIFI_SSID "XXXXXXXX"
 #define WIFI_PASSWORD "XXXXXXXX"
-
-#define MQTT_HOST IPAddress(192, 168, 1, 4)
-
-#ifdef USE_TLS
-#define MQTT_PORT 8883
-const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,0xb1,0xa5,0x97,0xba,0x65,0x8c,0x20,0x5a,0x9c,0xfa };
-#else
-#define MQTT_PORT 1883
-#endif
-#define MQTT_PORT 1883
+#define MQTT_HOST IPAddress(192, 168, 1, 21)
+// If using MQTT server authentication, fill in next two fields!
+const char* mqAuth="example";
+const char* mqPass="pangolin";
+//change next line to 1 for TLS connection on 8883 instead of 1883
+//#define ASYNC_TCP_SSL_ENABLED 1
 //
 //  Some sketches will require you to set START_WITH_CLEAN_SESSION to false
 //  For THIS sketch, leave it at false
@@ -36,6 +28,7 @@ const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,
 //
 //  The actual logic of the THIS sketch
 //
+#include<set>
 //  
 //  Default/initial values: FIX!!!
 #define QOS                 2
@@ -75,7 +68,7 @@ void stopClock(){
 }
 
 void onMqttConnect(bool sessionPresent) {
-  Serial.printf("Connected to MQTT session=%d max payload size=%d\n",sessionPresent,mqttClient.getMaxPayloadSize());
+  Serial.printf("Connected to MQTT %s:%d session=%d max payload size=%d\n",(MQTT_HOST).toString().c_str(),MQTT_PORT,sessionPresent,mqttClient.getMaxPayloadSize());
   mqttClient.subscribe(seqTopic.c_str(),QOS); // T-O-F topic @ chosen QoS   
   startClock();
 }
