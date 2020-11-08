@@ -135,7 +135,7 @@ void PangolinMQTT::_handlePacket(mb m){
             else {
                 PANGO::_space=PANGO::TCP->space();
                 bool session=i[0] & 0x01;
-                Serial.printf("\nSESSION IS %s\n",session ? "DIRTY":"CLEAN");
+                //Serial.printf("\nSESSION IS %s\n",session ? "DIRTY":"CLEAN");
                 Packet::_resendPartialTxns();
                 PANGO_PRINT("CONNECTED FH=%u SH=%u\n",PANGO::_HAL_getFreeHeap(),getMaxPayloadSize());
                 if(_cbConnect) _cbConnect(session);
