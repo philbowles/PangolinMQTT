@@ -26,10 +26,7 @@ SOFTWARE.
 
 PANG_MEM_POOL       mb::pool;
 
-mb::mb(size_t l,uint8_t* d,uint16_t i,ADFP f,bool track): len(l),id(i),data(d),frag(f),managed(track){ // always unmanaged - should only be called by onData
-//    PANGO_PRINT("LONG-WINDED CTOR %08X len=%d managed=%d\n",d,l,managed);
-    manage();
-}
+mb::mb(size_t l,uint8_t* d,uint16_t i,ADFP f,bool track): len(l),id(i),data(d),frag(f),managed(track){ manage(); } // always unmanaged - should only be called by onData
 
 mb::mb(ADFP p, bool track): data(p),managed(track) {
     uint32_t multiplier = 1;
@@ -42,10 +39,8 @@ mb::mb(ADFP p, bool track): data(p),managed(track) {
         value += (encodedByte & 0x7f) * multiplier;
         multiplier *= 128;
     } while ((encodedByte & 0x80) != 0);
-//    Serial.printf("GRL2***** value=%d len=%d\n",value,offset);
     len=1+offset+value; // MQTT msg size
     manage();
-    PANGO_PRINT("SKELETON %08X TYPE %s len=%d managed=%d\n",data,PANGO::getPktName(data[0]),len,managed);
 //  type 0x30 only
     if(isPub()){
         uint8_t bits=data[0] & 0x0f;
@@ -109,9 +104,9 @@ void mb::manage(){
 #ifdef PANGO_DEBUG
 void mb::dump(){
     if(data){
-        PANGO_PRINT("MB %08X TYPE %02X L=%d M=%d O=%d I=%d Q=%d F=%08X\n",data,data[0],len,managed,offset,id,qos,frag);
+        PANGO_PRINT4("MB %08X TYPE %02X L=%d M=%d O=%d I=%d Q=%d F=%08X\n",data,data[0],len,managed,offset,id,qos,frag);
         PANGO::dumphex(data,len);
-    } else PANGO_PRINT("MB %08X ZL or bare: can't dump\n",data);
+    } else PANGO_PRINT4("MB %08X ZL or bare: can't dump\n",data);
 }
 #else
 void mb::dump(){}

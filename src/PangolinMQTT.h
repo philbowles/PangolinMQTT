@@ -30,27 +30,37 @@ SOFTWARE.
 #include<string>
 #include<map>
 #include<queue>
-//#include<type_traits>
 
-#if ASYNC_TCP_SSL_ENABLED
-    #pragma message("Pangolin.h include tcp_axtls.h")
-    #include <tcp_axtls.h>
-    #define SHA1_SIZE 20
-#else
-    #pragma message("Pangolin.h NOT USING SSL/TLS")
-    #define SHA1_SIZE 0
-#endif
+#define SHA1_SIZE 20
 
 #ifdef ARDUINO_ARCH_ESP32
 #include <AsyncTCP.h>
 #elif defined(ARDUINO_ARCH_ESP8266)
 #include <ESPAsyncTCP.h>
+    #if ASYNC_TCP_SSL_ENABLED
+        #include <tcp_axtls.h>
+    #endif
 #elif defined(ARDUINO_ARCH_STM32)
 #include <STM32AsyncTCP.h>
 #else
 #error Platform not supported
 #endif
 
+#if PANGO_DEBUG
+    template<int I, typename... Args>
+    void PANGO_print(const char* fmt, Args... args) {
+        if (PANGO_DEBUG >= I) Serial.printf(std::string(std::string("D:%d: ")+fmt).c_str(),I,args...);
+    }
+  #define PANGO_PRINT1(...) PANGO_print<1>(__VA_ARGS__)
+  #define PANGO_PRINT2(...) PANGO_print<2>(__VA_ARGS__)
+  #define PANGO_PRINT3(...) PANGO_print<3>(__VA_ARGS__)
+  #define PANGO_PRINT4(...) PANGO_print<4>(__VA_ARGS__)
+#else
+  #define PANGO_PRINT1(...)
+  #define PANGO_PRINT2(...)
+  #define PANGO_PRINT3(...)
+  #define PANGO_PRINT4(...)
+#endif
 
 #define CSTR(x) x.c_str()
 enum :uint8_t {

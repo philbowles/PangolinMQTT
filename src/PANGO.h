@@ -67,3 +67,14 @@ namespace PANGO {
     extern char*            getPktName(uint8_t type);
 #endif
 }
+
+#ifdef PANGO_DEBUG
+    template<int I>
+    void pango_dump(const uint8_t* p, size_t len) {
+        if (PANGO_DEBUG >= I) PANGO::dumphex(p,len,16);
+    }
+    #define PANGO_DUMP3(p,l) pango_dump<3>((p),l)
+    #define PANGO_DUMP4(p,l) pango_dump<4>((p),l)
+#else
+  #define PANGO_DUMP3(...)
+#endif

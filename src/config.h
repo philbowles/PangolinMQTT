@@ -24,16 +24,26 @@ SOFTWARE.
 */
 #define PANGO_VERSION "1.0.0"
 
-#define PANGO_DEBUG
+/*
+    Debug levels: 
+    0 - No debug messages
+    1 - connection / disconnection messages
+    2 - level 1 + MQTT packet types
+    3 - level 2 + MQTT packet data
+    4 - everything
+*/
+
+#define PANGO_DEBUG 1
 
 #define ASYNC_TCP_SSL_ENABLED 1
-#pragma message("CONFIG H DEFINES ASYNC_TCP_SSL_ENABLED 1")
-#ifdef PANGO_DEBUG
+
+/*
+#if PANGO_DEBUG
     #define PANGO_PRINT(...) Serial.printf(__VA_ARGS__)
 #else
     #define PANGO_PRINT(...)
 #endif
-
+*/
 #define PANGO_POLL_RATE      2
 // per second - depend on LwIP implementation, may need to change as keepalive is scaled from this value
 // e.g 15 seconds = 30 poll "ticks"

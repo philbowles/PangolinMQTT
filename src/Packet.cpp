@@ -80,7 +80,7 @@ void Packet::_resendPartialTxns(){
         auto m=o.second;
         if(--(m.retries)){
             if(m.pubrec){
-                PANGO_PRINT("WE ARE PUBREC'D ATTEMPT @ QOS2: SEND %d PUBREL\n",m.id);
+                PANGO_PRINT4("WE ARE PUBREC'D ATTEMPT @ QOS2: SEND %d PUBREL\n",m.id);
                 PubrelPacket prp(m.id);
             }
             else {
@@ -89,7 +89,7 @@ void Packet::_resendPartialTxns(){
             }
         }
         else {
-            PANGO_PRINT("NO JOY AFTER %d ATTEMPTS: QOS FAIL\n",PANGO::_maxRetries);
+            PANGO_PRINT4("NO JOY AFTER %d ATTEMPTS: QOS FAIL\n",PANGO::_maxRetries);
             morituri.push_back(m.id); // all hope exhausted TODO: reconnect?
         }
     }

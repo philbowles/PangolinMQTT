@@ -53,7 +53,8 @@ namespace PANGO {
             void                _txPacket(mb);
 //
             void                dumphex(const uint8_t* mem, size_t len,uint8_t W);
-#ifdef PANGO_DEBUG
+
+#if PANGO_DEBUG
             std::map<uint8_t,char*> pktnames={
                 {0x10,"CONNECT"},
                 {0x20,"CONNACK"},
@@ -113,14 +114,14 @@ const char* PANGO::_HAL_getUniqueId(){
 #endif
 
 void PANGO::_ackTCP(size_t len, uint32_t time){
-    PANGO_PRINT("TXQ=%d TCP ACK LENGTH=%d\n",TXQ.size(),len);
+    PANGO_PRINT4("TXQ=%d TCP ACK LENGTH=%d\n",TXQ.size(),len);
     _resetPingTimers();
     size_t amtToAck=len;
     while(amtToAck){
         if(!TXQ.empty()){
             mb tmp=TXQ.front();
             TXQ.pop();
-            PANGO_PRINT("TXQ=%d TCP frag ACK LENGTH=%d acksize=%d amtleft=%d\n",TXQ.size(),tmp.len,69+((tmp.len>>4)<<4),amtToAck);
+            PANGO_PRINT4("TXQ=%d TCP frag ACK LENGTH=%d acksize=%d amtleft=%d\n",TXQ.size(),tmp.len,69+((tmp.len>>4)<<4),amtToAck);
             amtToAck-=_secure ? 69+((tmp.len>>4)<<4):tmp.len;//_ackSize(tmp.len);
             tmp.ack();
         } else break;
@@ -129,7 +130,7 @@ void PANGO::_ackTCP(size_t len, uint32_t time){
 }
 
 void PANGO::_clearFragments(){
-//    PANGO_PRINT("CLEAR %d FRAGMENTS\n",PANGO::_fragments.size());
+    PANGO_PRINT4("CLEAR %d FRAGMENTS\n",PANGO::_fragments.size());
     for(auto & f:PANGO::_fragments) f.clear();
     _fragments.clear();
     _fragments.shrink_to_fit();
@@ -169,7 +170,8 @@ void PANGO::_saveFragment(mb m){
 }
 
 void PANGO::_send(mb m){
-    PANGO_PRINT("----> SEND %s %d bytes on wire\n",PANGO::getPktName(m.data[0]),m.len);
+    PANGO_PRINT2("----> TX %s %d bytes\n",PANGO::getPktName(m.data[0]),m.len);
+    PANGO_DUMP3(m.data,m.len);
     TCP->add((const char*) m.data,m.len); // ESPAsyncTCP is WRONG on this, it should be a uint8_t*
     TCP->send();
 }
@@ -201,27 +203,27 @@ void PANGO::dumphex(const uint8_t* mem, size_t len,uint8_t W) {
 }
 #ifdef PANGO_DEBUG
 void PANGO::dump(){ 
-    PANGO_PRINT("DUMP ALL %d POOL BLOX\n",mb::pool.size());
-    for(auto & p:mb::pool) PANGO_PRINT("%08X\n",p);
+    PANGO_PRINT4("DUMP ALL %d POOL BLOX\n",mb::pool.size());
+    for(auto & p:mb::pool) PANGO_PRINT4("%08X\n",p);
 
     if(PANGO::TXQ.size()){
-        PANGO_PRINT("DUMP ALL %d TX PACKETS INFLIGHT\n",PANGO::TXQ.size());
+        PANGO_PRINT4("DUMP ALL %d TX PACKETS INFLIGHT\n",PANGO::TXQ.size());
         PANGO_MSG_Q cq=PANGO::TXQ;
         while(!cq.empty()){
             cq.front().dump();
             cq.pop();
         }
-    } else PANGO_PRINT("TXQ EMPTY\n");
+    } else PANGO_PRINT4("TXQ EMPTY\n");
 
-    PANGO_PRINT("DUMP ALL %d PACKETS OUTBOUND\n",Packet::_outbound.size());
+    PANGO_PRINT4("DUMP ALL %d PACKETS OUTBOUND\n",Packet::_outbound.size());
     for(auto & p:Packet::_outbound) p.second.dump();
 
-    PANGO_PRINT("DUMP ALL %d PACKETS INBOUND\n",Packet::_inbound.size());
+    PANGO_PRINT4("DUMP ALL %d PACKETS INBOUND\n",Packet::_inbound.size());
     for(auto & p:Packet::_inbound) p.second.dump();
 
-    PANGO_PRINT("DUMP ALL %d FRAGMENTS\n",_fragments.size());
+    PANGO_PRINT4("DUMP ALL %d FRAGMENTS\n",_fragments.size());
     for(auto & p:_fragments) p.dump();
 
-    PANGO_PRINT("\n");
+    PANGO_PRINT4("\n");
 }
 #endif
