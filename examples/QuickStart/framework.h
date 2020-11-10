@@ -36,8 +36,10 @@ void connectToMqtt() {
   mqttClient.connect();
 }
 void connectToWifi() {
+  if(!WiFi.isConnected()){
     Serial.printf("Connecting to Wi-Fi... SSID=%s\n",WIFI_SSID);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  } else Serial.printf("Already connected\n");
 }
 
 #ifdef ARDUINO_ARCH_ESP32

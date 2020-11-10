@@ -1,8 +1,6 @@
 ![plainhdr](../assets/pangoplain.jpg)
 # The challenges of MQTT on embedded systems
 
-### ...and the different approaches taken by three open-source libraries
-
 ## Contents
 
 1. [Quality of service guarantees](#1-quality-of-service-guarantees)
@@ -57,7 +55,7 @@ Being physically unable to comply due to both 1.2.1 and 1.2.2 above, the embedde
 
 It can "lie" to the server and ACK the incoming IDs regardless of whether they were delivered or not: "Confirm delivery of ID 666? Of *of course* I delivered it!...`server.sendACK(666);`"
 
-The success of this method depends on which of the two recommeded algorithms A or B is used (see "Figure 4.3 – QoS 2 protocol flow diagram, non normative example" in the [MQTT 3.1.1 spec](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html) ), Using method B allows the lie to go unnoticed *and* actually satisifes QoS2 rules *if* you actually managed to deliver the message before the loss of connection. The `Pangolin` library (see below) takes this approach.
+The success of this method depends on which of the two recommeded algorithms A or B is used (see "Figure 4.3 – QoS 2 protocol flow diagram, non normative example" in the [MQTT 3.1.1 spec](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html) ), Using method B allows the lie to go unnoticed *and* actually satisifes QoS2 rules *if* you actually managed to deliver the message before the loss of connection. `PangolinMQTT` takes this approach.
 
 Method A, well... didn't you mother tell you "lying never pays"? The server will *think* it has successfully delivered the QoS2 "exactly once" but as when ordering cheap things from various far-flung nations, the client is left forever shouting "Oi! Where's my packet???" - and he will *never* receive it, thus breaking the QoS2 promise.
 
@@ -89,7 +87,7 @@ Worse, if the platform offers user choices which change those settings, as for e
 
 *(The "Lower Memory" options set TCP_MSS to 536 while "Higher Bandwidth" sets it to 1460)*
 
-Coding a supposedly portable *library* whic makes such unsafe assumptions or relies on specific implementation parameters is less forgiveable.
+Coding a supposedly portable *library* whic makes such unsafe assumptions or relies on specific implementation parameters is unacceptable.
 
 The take-away form this is that you app *needs* to know this value and stay below it by limiting the maximum payload size if it is to avoid...
 
@@ -97,7 +95,9 @@ The take-away form this is that you app *needs* to know this value and stay belo
 
 Well-designed libraries will present the user API with a chunk or stream of data that requires no knowledge of the underlying physical network MTU, LwIP TCP_MSS size, nor a dozen other parameters: It just "gives you the data". In order to do this it needs to _reassemble smaller blocks into larger packets before passing them on.
 
-Imagine the implementaion has a single 1k buffer and you get sent a 3.3k message (*and* - of course - that your app has allocated - say - a max sized buffer of 4k). The library you call will get 3x 1k blocks from the network layer which it has to hold on to until all the data are received and one 0.3k block which it then glues together and sends to you. You are none the wiser: you "just get" the 3.3kb message without needing to understand what goes on "under the hood".
+Imagine the implementation has a single 1k buffer and you get sent a 3.3k message (*and* - of course - that your app has allocated - say - a max sized buffer of 4k). The library you call will get 3x 1k blocks from the network layer which it has to hold on to until all the data are received and one 0.3k block which it then glues together and sends to you. You are none the wiser: you "just get" the 3.3kb message without needing to understand what goes on "under the hood".
+
+If on the other hand, the user - *beyond your control* - changes some options which reduce the buffers to 2k, you are going to have problems with that 3.3k message!
 
 ### 2.2 Limits
 
@@ -109,20 +109,32 @@ No amount of reassembly is going to solve *huge* payloads: at some point, your M
 
 `PubSubClient` only allows QoS0 so it is perfect for the large majority of typical small IOT applications. It's almost as if it was designed to be the "best in class" for these undemanding apps: it has everything it needs and not a single ounce of fat. It should come as no suprise then, to know that its author Nick O'Leary is in the list of contributors to the MQTT standard, and just happened to also write a little thing called "NODE-RED".
 
-If you want a 100% compliant, small, fast, stable, well supported QoS0 client, then `PubSubClient` i sthe only place to go as long as you don't need big payloads. I cannot recommend it highly enough (which goes for any other work by the same author)
+If you want a 100% compliant, small, fast, stable, well supported QoS0 client, then `PubSubClient` is the only place to go as long as you don't need big payloads. I cannot recommend it highly enough (which also goes for any other work by the same author)
 
 #### b) Limit it to the size of a single LwIP buffer...
 
-...which is almost* the approach taken by `asyncMqttClient` which - rather poorly, in my opinion - expects the user to then do the packet reassembly for any larger message.
+...which is slightly better than a) but still poor *and* subject to changeable factors beyond the library's control.
 
-The asterisk in "almost" above is because in order to do that packet reassembly, efficiently allocate your own buffers etc etc, it *really* helps to know what that size is but  `asyncMqttClient` offers zero help. The author claims this is to keep the library "lightweight" and while there is a hint of truth in that, my own view it is simply abdicating responsibility for providing a fully-functional user API that *rightly* hides such implementation issues.
-
-Anyone interested in further reading regarding fatal bugs in that library can see more detail [here](https://github.com/marvinroger/async-mqtt-client/issues/193)
+While it seems at first sight to be a valid option, it is actually the *worst of both worlds* for a number of reasons which are beyond the scope of this simple document.
 
 #### c) "The Gold Standard"
 
-Allow the user to decide the maximum safe size for his implementation (while providing a "sensible" safe default), _reassemble the underlying packets and deliver a single correctly-sized payload to the the user API both inbound and outbound. This is the method currently used by `Pangolin`.
+Allow the user to decide the maximum safe size for his implementation (while providing a "sensible" safe default), reassemble the underlying packets and deliver a single correctly-sized payload to the the user API both inbound and outbound.
 
-Inherent in this approach is that *any* library adopting it must also gracefully reject any incoming message larger than than the user-defined maximum and then notify him clearly of the fact. Without crashing.
+Inherent in this approach is that *any* library adopting it must also gracefully reject any message larger than than the user-defined maximum and then notify him clearly of the fact, without crashing.
 
-Additionally, it provides an `onError` callback to notify the user of "Killer Packets" that would otherwise break the memory limits, and safely discards any oversized incoming data.
+This is the method currently used by `PangolinMQTT`. Additionally, it provides an `onError` callback to notify the user of "Killer Packets" that would otherwise break the memory limits, and safely discards any oversized incoming data.
+
+---
+
+## Find me daily in these FB groups
+
+* [Pangolin Support](https://www.facebook.com/groups/pangolinmqtt/)
+* [ESP8266 & ESP32 Microcontrollers](https://www.facebook.com/groups/2125820374390340/)
+* [ESP Developers](https://www.facebook.com/groups/ESP8266/)
+* [H4/Plugins support](https://www.facebook.com/groups/h4plugins)
+
+I am always grateful for any $upport on [Patreon](https://www.patreon.com/esparto) :)
+
+
+(C) 2020 Phil Bowles

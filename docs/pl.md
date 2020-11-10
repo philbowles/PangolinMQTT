@@ -37,7 +37,7 @@ mqttClient.publish("my/topic/subtopic",some_data_pointer, some_data_length);
 
 For differing payloads, the length calcualtion ***must*** be correctly performed and the memory allocated prior to every call - and usually freed after it. This is both time-consuming and error-prone, hence the `xPublish` variants exist to do this routine work for you correctly in all cases depending on the type of data being sent.
 
-If you don't understand the last paragraph, then simply stick to the simple `publish` call and ignore the rest of this document.
+If you don't understand the last paragraph, then simply stick to the simple `publish` calls and ignore the rest of this document.
 
 ## Received payloads
 
@@ -133,3 +133,16 @@ In summary:
 2 ***ALWAYS USE MATCHING 'xPublish' and 'xPayload' CALLS***
 3 ***If you don't "get" all of this, stick to simple publish and do your own unpacking***
 
+---
+
+## Find me daily in these FB groups
+
+* [Pangolin Support](https://www.facebook.com/groups/pangolinmqtt/)
+* [ESP8266 & ESP32 Microcontrollers](https://www.facebook.com/groups/2125820374390340/)
+* [ESP Developers](https://www.facebook.com/groups/ESP8266/)
+* [H4/Plugins support](https://www.facebook.com/groups/h4plugins)
+
+I am always grateful for any $upport on [Patreon](https://www.patreon.com/esparto) :)
+
+
+(C) 2020 Phil Bowles

@@ -1,9 +1,8 @@
 ![mbm](assets/pangoplain.jpg)
 
-# ArduinoIDE MQTT client library for ESP8266, ESP32 and STM32-NUCLEO*
+# ArduinoIDE MQTT client library for ESP8266, ESP32
 
 ###### Version 1.0.0 [Release Notes](docs/rn100.md) - This is a major release, API has many changes, READ THE NOTES!
-
 
 * [Features](#features)
 * [Performance](#performance)
@@ -13,12 +12,11 @@
 * [IMPORTANT NOTE FOR PLATFORMIO USERS](#important-note-for-platformio-users)
 
 # Other Documents
+* [Getting Started](101.md)
+* [Payload Handling and "expert" functions](pl.md)
+* [Full API specification](docs/api.md)
 * [Using TLS](docs/tls.md)
-* [STM32 targets](docs/stm32.md)
 * [Challenges of embedded MQTT](docs/qos.md)
-* [Problems / errors in the AsyncMqttClient API](docs/api.md)
-* [List of 16 fatal bugs in AsyncMqttClient (with evidence)](docs/bugs.md)
-* [Example Sketches](docs/examples.md)
   
 ---
 
