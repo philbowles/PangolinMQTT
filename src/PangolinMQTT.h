@@ -31,14 +31,15 @@ SOFTWARE.
 #include<map>
 #include<queue>
 
-#define SHA1_SIZE 20
+#define SHA1_SIZE 0
 
 #ifdef ARDUINO_ARCH_ESP32
-#include <AsyncTCP.h>
+#include <AsyncTCP.h> /// no tls yet
 #elif defined(ARDUINO_ARCH_ESP8266)
 #include <ESPAsyncTCP.h>
     #if ASYNC_TCP_SSL_ENABLED
         #include <tcp_axtls.h>
+        #define SHA1_SIZE 20
     #endif
 #elif defined(ARDUINO_ARCH_STM32)
 #include <STM32AsyncTCP.h>

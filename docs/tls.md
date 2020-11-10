@@ -23,4 +23,10 @@ const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,
 
 # Example sketches
 
+quickstart bare size: 271052
++ TLS = 334604
+diff 63552
+
+
+
 Apart from the "QuickStart_X" and STM32 sketches, the examples include a simple `#define ASYNC_TCP_SSL_ENABLED` at the head of the sketch. Set your own `cert` finfingerprint and make sure `ASYNC_TCP_SSL_ENABLED` is defined - the rest happens automatically.

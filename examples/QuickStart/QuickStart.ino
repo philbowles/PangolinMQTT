@@ -1,10 +1,20 @@
+//
+//    Common to all sketches: necssary infrastructure identifiers
+//
 #define WIFI_SSID "XXXXXXXX"
 #define WIFI_PASSWORD "XXXXXXXX"
-
 #define MQTT_HOST IPAddress(192, 168, 1, 4)
-#define MQTT_PORT 1883
-
-#define START_WITH_CLEAN_SESSION true
+// if using TLS, edit config.h and #define ASYNC_TCP_SSL_ENABLED 1
+// do the same in async_config.h of the PATCHED ESPAsyncTCP library!! 
+const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,0xb1,0xa5,0x97,0xba,0x65,0x8c,0x20,0x5a,0x9c,0xfa };
+// If using MQTT server authentication, fill in next two fields!
+const char* mqAuth="";
+const char* mqPass="";
+//
+//  Some sketches will require you to set START_WITH_CLEAN_SESSION to false
+//  For THIS sketch, leave it at false
+//
+#define START_WITH_CLEAN_SESSION   true
 
 #include "framework.h" // manages automatic connection / reconnection and runs setup() - put YOUR stuff in userSetup
 

@@ -11,23 +11,15 @@
  *  ON AVERAGE then you will still always get them all. 
  *  
  */                    
-
-//#define ASYNC_TCP_SSL_ENABLED
-
-#include<set>
-
 #define WIFI_SSID "XXXXXXXX"
 #define WIFI_PASSWORD "XXXXXXXX"
-
-#define MQTT_HOST IPAddress(192, 168, 1, 4)
-
-#ifdef ASYNC_TCP_SSL_ENABLED
-#define MQTT_PORT 8883
+#define MQTT_HOST IPAddress(192, 168, 1, 21)
+// if using TLS, edit config.h and #define ASYNC_TCP_SSL_ENABLED 1
+// do the same in async_config.h of the PATCHED ESPAsyncTCP library!! 
 const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,0xb1,0xa5,0x97,0xba,0x65,0x8c,0x20,0x5a,0x9c,0xfa };
-#else
-#define MQTT_PORT 1883
-#endif
-#define MQTT_PORT 1883
+// If using MQTT server authentication, fill in next two fields!
+const char* mqAuth="example";
+const char* mqPass="pangolin";
 //
 //  Some sketches will require you to set START_WITH_CLEAN_SESSION to false
 //  For THIS sketch, leave it at false
@@ -38,6 +30,7 @@ const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,
 //
 //  The actual logic of the THIS sketch
 //
+#include<set>
 //  
 //  Default/initial values: FIX!!!
 #define QOS                 1
@@ -55,8 +48,6 @@ uint32_t sentThisSession=0;
 uint32_t nDups=0;
 
 void sendNextInSequence(){
-//  char buf[16];
-//  sprintf(buf,"%d",++sequence);
   sent.insert(++sequence);
   ++sentThisSession;
   mqttClient.xPublish(seqTopic.c_str(),sequence,QOS, false);
@@ -88,9 +79,7 @@ void onMqttDisconnect(int8_t reason) {
   Serial.printf("Disconnected from MQTT reason=%d\n",reason);
   sentThisSession=0;
   stopClock();
-  if (WiFi.isConnected()) {
-    mqttReconnectTimer.once(RECONNECT_DELAY_M, connectToMqtt);
-  }
+  mqttReconnectTimer.once(RECONNECT_DELAY_M, connectToMqtt);
 }
 
 void onMqttMessage(const char* topic, const uint8_t* payload, size_t len,uint8_t qos,bool retain,bool dup) {

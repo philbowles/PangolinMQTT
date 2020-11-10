@@ -25,14 +25,6 @@ SOFTWARE.
 #include <PangolinMQTT.h>
 #include "Packet.h"
 
-#pragma message("CPP PANGO DEBUG LEVEL")
-#pragma message(PANGO_DEBUG)
-#if !(PANGO_DEBUG == 0)
-    #pragma message("DBL NZ")
-#else
-    #pragma message("DBL ZERO!!!!!!!!")
-#endif
-
 std::string          PangolinMQTT::_username;
 std::string          PangolinMQTT::_password;
 std::string          PangolinMQTT::_willTopic;

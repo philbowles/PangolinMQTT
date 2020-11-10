@@ -20,6 +20,12 @@
 #define LIBRARY "PangolinMQTT "PANGO_VERSION
 PangolinMQTT mqttClient;
 
+#if ASYNC_TCP_SSL_ENABLED
+#define MQTT_PORT 8883
+#else
+#define MQTT_PORT 1883
+#endif
+
 #define RECONNECT_DELAY_M   5
 #define RECONNECT_DELAY_W   5
 
@@ -30,15 +36,12 @@ void connectToMqtt() {
   mqttClient.connect();
 }
 void connectToWifi() {
-  if(!WiFi.isConnected()){
     Serial.printf("Connecting to Wi-Fi... SSID=%s\n",WIFI_SSID);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  } else Serial.printf("Already connected\n");
 }
 
 #ifdef ARDUINO_ARCH_ESP32
 void WiFiEvent(WiFiEvent_t event) {
-    Serial.printf("[WiFi-event] event: %d\n", event);
     switch(event) {
     case SYSTEM_EVENT_STA_GOT_IP:
         Serial.println("WiFi connected");
@@ -62,6 +65,8 @@ extern void userSetup();
 extern void onMqttConnect(bool);
 extern void onMqttMessage(const char* topic, const uint8_t* payload, size_t len,uint8_t qos,bool retain,bool dup);
 
+extern const char* mqAuth;
+extern const char* mqPass;
 /*
     default error handling
 */
@@ -151,6 +156,7 @@ void setup() {
   mqttClient.onError(onMqttError);
   mqttClient.setCleanSession(START_WITH_CLEAN_SESSION);
   mqttClient.setKeepAlive(RECONNECT_DELAY_M *3);
+  if(mqAuth!="") mqttClient.setCredentials(mqAuth,mqPass);
 #if ASYNC_TCP_SSL_ENABLED
   mqttClient.serverFingerprint(cert);
 #endif

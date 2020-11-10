@@ -35,15 +35,9 @@ SOFTWARE.
 
 #define PANGO_DEBUG 1
 
-#define ASYNC_TCP_SSL_ENABLED 1
+#define ASYNC_TCP_SSL_ENABLED 0
+// Don't forget to edit also async_config.h in the PATCHED ESPAsyncTCP lib folder!!!
 
-/*
-#if PANGO_DEBUG
-    #define PANGO_PRINT(...) Serial.printf(__VA_ARGS__)
-#else
-    #define PANGO_PRINT(...)
-#endif
-*/
 #define PANGO_POLL_RATE      2
 // per second - depend on LwIP implementation, may need to change as keepalive is scaled from this value
 // e.g 15 seconds = 30 poll "ticks"

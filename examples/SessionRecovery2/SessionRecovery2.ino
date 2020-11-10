@@ -8,8 +8,6 @@
  *  ON AVERAGE then you will still always get them all. 
  */
 //
-//#define PANGO_DEBUG 2
-//
 //    Common to all sketches: necssary infrastructure identifiers
 //
 #define WIFI_SSID "XXXXXXXX"
@@ -48,15 +46,13 @@ std::set<uint32_t> sent;
 uint32_t sentThisSession=0;
   
 void sendNextInSequence(){
+  sent.insert(++sequence);
+  ++sentThisSession;
+  mqttClient.xPublish(seqTopic.c_str(),sequence,QOS, false);
+  Serial.printf("T=%d SENT %d (thisSession=%d)\n",millis(),sequence,sentThisSession);
   if(random(0,100) > 95) {
-    Serial.printf("DELIBERATE RANDOM DISCONNECT TO TEST QOS!!!\n");
+    Serial.printf("DELIBERATE RANDOM DISCONNECT TO TEST QOS%d!!!\n",QOS);
     mqttClient.disconnect(); 
-  }
-  else {
-    sent.insert(++sequence);
-    ++sentThisSession;
-    mqttClient.xPublish(seqTopic.c_str(),sequence,QOS, false);
-    Serial.printf("T=%d SENT %d (thisSession=%d)\n",millis(),sequence,sentThisSession);
   }
 }
 
@@ -82,9 +78,7 @@ void onMqttDisconnect(int8_t reason) {
   Serial.printf("Disconnected from MQTT reason=%d\n",reason);
   sentThisSession=0;
   stopClock();
-  if (WiFi.isConnected()) {
-    mqttReconnectTimer.once(RECONNECT_DELAY_M, connectToMqtt);
-  }
+  mqttReconnectTimer.once(RECONNECT_DELAY_M, connectToMqtt);
 }
 
 void onMqttMessage(const char* topic, const uint8_t* payload, size_t len,uint8_t qos,bool retain,bool dup) {
