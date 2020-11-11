@@ -201,7 +201,8 @@ void PANGO::dumphex(const uint8_t* mem, size_t len,uint8_t W) {
     }
     Serial.println();
 }
-#ifdef PANGO_DEBUG
+
+#if PANGO_DEBUG
 void PANGO::dump(){ 
     PANGO_PRINT4("DUMP ALL %d POOL BLOX\n",mb::pool.size());
     for(auto & p:mb::pool) PANGO_PRINT4("%08X\n",p);
