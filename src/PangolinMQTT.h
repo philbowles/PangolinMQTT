@@ -155,9 +155,6 @@ using PANGO_cbConnect       =std::function<void(bool)>;
 using PANGO_cbDisconnect    =std::function<void(int8_t)>;
 using PANGO_cbError         =std::function<void(uint8_t,int)>;
 using PANGO_cbMessage       =std::function<void(const char* topic, const uint8_t* payload, size_t len,uint8_t qos,bool retain,bool dup)>;
-using PANGO_cbPublish       =std::function<void(uint16_t packetId)>;
-using PANGO_cbSubscribe     =std::function<void(uint16_t, uint8_t)>;
-using PANGO_cbUnsubscribe   =std::function<void(uint16_t)>;
 
 class Packet;
 class ConnectPacket;
@@ -168,13 +165,10 @@ class PangolinMQTT {
         friend class ConnectPacket;
         friend class PublishPacket;
         
-               PANGO_cbConnect      _cbConnect=nullptr;
-               PANGO_cbDisconnect   _cbDisconnect=nullptr;
-        static PANGO_cbError        _cbError;
-               PANGO_cbMessage      _cbMessage=nullptr;
-               PANGO_cbPublish      _cbPublish=nullptr;
-               PANGO_cbSubscribe    _cbSubscribe=nullptr;
-               PANGO_cbUnsubscribe  _cbUnsubscribe=nullptr;
+               PANGO_cbConnect     _cbConnect=nullptr;
+               PANGO_cbDisconnect  _cbDisconnect=nullptr;
+        static PANGO_cbError       _cbError;
+               PANGO_cbMessage     _cbMessage=nullptr;
                uint8_t             _fingerprint[SHA1_SIZE];
         static bool                _cleanSession;
                std::string         _clientId;
@@ -208,9 +202,6 @@ class PangolinMQTT {
                 void                onDisconnect(PANGO_cbDisconnect callback){ _cbDisconnect=callback; }
                 void                onError(PANGO_cbError callback){ _cbError=callback; }
                 void                onMessage(PANGO_cbMessage callback){ _cbMessage=callback; }
-                void                onPublish(PANGO_cbPublish callback){ _cbPublish=callback; }
-                void                onSubscribe(PANGO_cbSubscribe callback){ _cbSubscribe=callback; }
-                void                onUnsubscribe(PANGO_cbUnsubscribe callback){ _cbUnsubscribe=callback; }
                 void                publish(const char* topic,const uint8_t* payload, size_t length, uint8_t qos=0,  bool retain=false);
                 void                publish(const char* topic,const char* payload, size_t length, uint8_t qos=0,  bool retain=false);
                 template<typename T>

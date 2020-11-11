@@ -112,8 +112,6 @@ So, always provide: the MCU/board type, a good description of the problem, how /
 
 This is open-source, I do it in my own time, for free. If you want professional-level support because you are using *my* work to benefit your own commercial gain, then I'm happy to talk privately about a paid contract. Or you can support me on [Patreon](https://www.patreon.com/esparto) 
 
-Until then, be polite, accept my advice / decisions gracefully or you will be blocked: it's that simple.
-
 ---
 
 ## Find me daily in these FB groups

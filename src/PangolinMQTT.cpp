@@ -132,17 +132,14 @@ void PangolinMQTT::_handlePacket(mb m){
                 if(_cbConnect) _cbConnect(session);
             }
         case PINGRESP:
+        case UNSUBACK:
             break;
         case SUBACK:
             if(i[2] & 0x80) _notify(SUBSCRIBE_FAIL,id);
-            else if(_cbSubscribe) _cbSubscribe(id,i[2]);
-            break;
-        case UNSUBACK:
-            if(_cbUnsubscribe) _cbUnsubscribe(id);
             break;
         case PUBACK:
+        case PUBCOMP:
             Packet::_ACKoutbound(id);
-            if(_cbPublish) _cbPublish(id);
             break;
         case PUBREC:
             {
@@ -158,10 +155,6 @@ void PangolinMQTT::_handlePacket(mb m){
                 } else PANGO::LIN->_notify(INBOUND_QOS_ACK_FAIL,id);
                 PubcompPacket pcp(id); // pubrel
             }
-            break;
-        case PUBCOMP:
-            Packet::_ACKoutbound(id);
-            if(_cbPublish) _cbPublish(id);
             break;
         default:
             if(m.isPub()) _handlePublish(m);
