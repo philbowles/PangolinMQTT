@@ -1,6 +1,5 @@
 SOONEST:
 SOON:
-    debug levels
 MEDIUM-TERM:
     async statics to PANGO
     coalesce templates wehn c++17 if constexpr available

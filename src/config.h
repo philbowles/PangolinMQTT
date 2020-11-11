@@ -33,7 +33,7 @@ SOFTWARE.
     4 - everything
 */
 
-#define PANGO_DEBUG 1
+#define PANGO_DEBUG 0
 
 #define ASYNC_TCP_SSL_ENABLED 0
 // Don't forget to edit also async_config.h in the PATCHED ESPAsyncTCP lib folder!!!
