@@ -62,7 +62,7 @@ namespace PANGO {
 
     extern void             dumphex(const uint8_t* mem, size_t len,uint8_t W=16);
 
-#ifdef PANGO_DEBUG
+#if PANGO_DEBUG
     extern void             dump(); // null if no debug
     extern char*            getPktName(uint8_t type);
 #endif
