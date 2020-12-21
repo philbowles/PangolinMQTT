@@ -2,6 +2,7 @@
 # Datatypes (KEYWORD1)
 #######################################
 
+mqttClient	KEYWORD1
 PangolinMQTT	KEYWORD1
 PANGO	KEYWORD1
 
@@ -9,37 +10,50 @@ PANGO	KEYWORD1
 # Methods and Functions (KEYWORD2)
 #######################################
 
-setKeepAlive	KEYWORD2
-setClientId	KEYWORD2
-getClientId	KEYWORD2
-setCleanSession	KEYWORD2
-setCredentials	KEYWORD2
-setWill	KEYWORD2
-setServer	KEYWORD2
-setSecure	KEYWORD2
-onConnect	KEYWORD2
-onDisconnect	KEYWORD2
-onSubscribe	KEYWORD2
-onUnsubscribe	KEYWORD2
-onMessage	KEYWORD2
-onPublish	KEYWORD2
-connected	KEYWORD2
+PANGO_PRINT1	KEYWORD2
+PANGO_PRINT2	KEYWORD2
+PANGO_PRINT3	KEYWORD2
+PANGO_PRINT4	KEYWORD2
+
 connect	KEYWORD2
 disconnect	KEYWORD2
+getClientId	KEYWORD2
+getMaxPayloadSize	KEYWORD2
+setKeepAlive	KEYWORD2
+onConnect	KEYWORD2
+onDisconnect	KEYWORD2
+onError	KEYWORD2
+onMessage	KEYWORD2
+publish	KEYWORD2
+
+serverFingerprint	KEYWORD2
+setCleanSession	KEYWORD2
+setClientId	KEYWORD2
+setCredentials	KEYWORD2
+setKeepAlive	KEYWORD2
+setServer	KEYWORD2
+setWill	KEYWORD2
+
 subscribe	KEYWORD2
 unsubscribe	KEYWORD2
 
+xPayload	KEYWORD2
+xPublish	KEYWORD2
+
 dumphex	KEYWORD2
-payloadToCstring	KEYWORD2
-payloadToInt	KEYWORD2
-payloadToStdstring	KEYWORD2
-payloadToString	KEYWORD2
-getMaxPayloadSize	KEYWORD2
-onError	KEYWORD2
-serverFingerprint	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
 #######################################
 
-
+TCP_DISCONNECTED	KEYWORD1
+MQTT_SERVER_UNAVAILABLE	KEYWORD1
+UNRECOVERABLE_CONNECT_FAIL	KEYWORD1
+TLS_BAD_FINGERPRINT	KEYWORD1
+SUBSCRIBE_FAIL	KEYWORD1
+INBOUND_QOS_ACK_FAIL	KEYWORD1
+OUTBOUND_QOS_ACK_FAIL	KEYWORD1
+INBOUND_PUB_TOO_BIG	KEYWORD1
+OUTBOUND_PUB_TOO_BIG	KEYWORD1
+BOGUS_PACKET	KEYWORD1
+X_INVALID_LENGTH	KEYWORD1

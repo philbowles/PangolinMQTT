@@ -10,50 +10,27 @@
  *  they may come back out-of-sequence, but as long as MQTT can keep up 
  *  ON AVERAGE then you will still always get them all. 
  *  
- *                     
- * PLEASE READ THE NOTES ON THIS SKETCH FIRST AT
- * 
- * https://github.com/philbowles/Pangolin/
- * 
- * If you remove the following line, this sketch will compile 
- * using AsyncMqttClient to allow you to compare results / performance
- */
-#define USE_PANGOLIN
-#define USE_TLS
-
-#include<set>
-//
-//    Common to all sketches: necssary infrastructure
-//
+ */                    
 #define WIFI_SSID "XXXXXXXX"
 #define WIFI_PASSWORD "XXXXXXXX"
-
 #define MQTT_HOST IPAddress(192, 168, 1, 21)
-
-#ifdef USE_TLS
-#define MQTT_PORT 8883
+// if using TLS, edit config.h and #define ASYNC_TCP_SSL_ENABLED 1
+// do the same in async_config.h of the PATCHED ESPAsyncTCP library!! 
 const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,0xb1,0xa5,0x97,0xba,0x65,0x8c,0x20,0x5a,0x9c,0xfa };
-#else
-#define MQTT_PORT 1883
-#endif
+// If using MQTT server authentication, fill in next two fields!
+const char* mqAuth="example";
+const char* mqPass="pangolin";
 //
 //  Some sketches will require you to set START_WITH_CLEAN_SESSION to false
 //  For THIS sketch, leave it at false
 //
 #define START_WITH_CLEAN_SESSION   false
 
-#include "options.h"
-//
-// unified functions that "smooth out" the minor API differences between the libs 
-//
-extern void unifiedPublish(std::string,uint8_t,bool,uint8_t*,size_t);
-extern void unifiedSubscribe(std::string,uint8_t);
-extern void unifiedUnubscribe(std::string);
-// function to automatically add A or P prefix to a topic
-extern std::string uTopic(std::string t); // automatically prefixes the topic with "A" or "P"
+#include "framework.h" // manages automatic connection / reconnection and runs setup() - put YOUR stuff in userSetup
 //
 //  The actual logic of the THIS sketch
 //
+#include<set>
 //  
 //  Default/initial values: FIX!!!
 #define QOS                 1
@@ -61,7 +38,7 @@ extern std::string uTopic(std::string t); // automatically prefixes the topic wi
 #define HEARTBEAT           7
 // NB RATE IS IN MILLISECONDS!!!!
 //
-std::string seqTopic=uTopic("sequence"); // the out-and-back message
+std::string seqTopic="sequence"; // the out-and-back message
 
 uint32_t  sequence=0;
 bool      bursting=false; // send clock interlock
@@ -71,16 +48,14 @@ uint32_t sentThisSession=0;
 uint32_t nDups=0;
 
 void sendNextInSequence(){
-  char buf[16];
-  sprintf(buf,"%d",++sequence);
-  sent.insert(sequence);
+  sent.insert(++sequence);
   ++sentThisSession;
-  unifiedPublish(seqTopic.c_str(), QOS, false, (uint8_t*) buf, strlen(buf)+1);
+  mqttClient.xPublish(seqTopic.c_str(),sequence,QOS, false);
   if(random(0,100) > 95) {
     Serial.printf("DELIBERATE RANDOM DISCONNECT TO TEST QOS!!!\n");
     mqttClient.disconnect(); 
   }
-  Serial.printf("SENT %s (thisSession=%d)\n",buf,sentThisSession);
+  Serial.printf("SENT %d (thisSession=%d)\n",sequence,sentThisSession);
 }
 
 void startClock(){
@@ -94,21 +69,23 @@ void stopClock(){
   bursting=false;
 }
 
-void unifiedMqttConnect() {
-  unifiedSubscribe(seqTopic.c_str(),QOS); // T-O-F topic @ chosen QoS   
+void onMqttConnect(bool sessionPresent) {
+  Serial.printf("Connected to MQTT session=%d max payload size=%d\n",sessionPresent,mqttClient.getMaxPayloadSize());
+  mqttClient.subscribe(seqTopic.c_str(),QOS); // T-O-F topic @ chosen QoS   
   startClock();
 }
 
-void unifiedMqttDisconnect(int8_t reason) {
-  Serial.printf("USER: Disconnect reason=%d\n",reason);
+void onMqttDisconnect(int8_t reason) {
+  Serial.printf("Disconnected from MQTT reason=%d\n",reason);
   sentThisSession=0;
   stopClock();
+  mqttReconnectTimer.once(RECONNECT_DELAY_M, connectToMqtt);
 }
 
-void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool dup, bool retain, size_t len, size_t index, size_t total) {
-//    Serial.printf("unifiedMqttMessage %s len=%d\n",topic.c_str(),len);
+void onMqttMessage(const char* topic, const uint8_t* payload, size_t len,uint8_t qos,bool retain,bool dup) {
 //    PANGO::dumphex(payload,len);
-    uint32_t R=PANGO::payloadToInt(payload,len);
+    uint32_t R;
+    mqttClient.xPayload(payload,len,R);
     if(!sentThisSession){
       Serial.printf("***** QoS1 recovery in action! *****\n");
       Serial.printf("We have not yet sent any messages, but %d just came in!\n",R);
@@ -121,9 +98,9 @@ void unifiedMqttMessage(std::string topic, uint8_t* payload, uint8_t qos, bool d
     sent.erase(R);
 }
 // set qos topic names and start HB ticker
-void unifiedSetup(){
+void userSetup(){
     PT1.attach(HEARTBEAT,[]{
-        Serial.printf("Heartbeat: Heap=%u seq=%d nDups=%d number of reconnects=%d\n",ESP.getFreeHeap(),sequence,nDups,nRCX);
+        Serial.printf("Heartbeat: Heap=%u seq=%d nDups=%d\n",ESP.getFreeHeap(),sequence,nDups);
         Serial.printf("No. Incomplete send/rcv pairs=%d\n",sent.size());
         if(sent.size()){
             for(auto const& s:sent) Serial.printf("%d,",s);
@@ -131,3 +108,5 @@ void unifiedSetup(){
         }
       });
 }
+
+void loop(){}

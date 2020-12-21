@@ -1,9 +1,7 @@
 SOONEST:
 SOON:
-    debug levels
 MEDIUM-TERM:
-    change blox to mb 
-    unfactor _rl
     async statics to PANGO
+    coalesce templates wehn c++17 if constexpr available
 DREAMLAND:
     LittleFS FULL QoS2 recovery (needs root n branch change to "Method b")

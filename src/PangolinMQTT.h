@@ -29,21 +29,38 @@ SOFTWARE.
 #include<functional>
 #include<string>
 #include<map>
-#include <queue>
+#include<queue>
+
+#define SHA1_SIZE 0
 
 #ifdef ARDUINO_ARCH_ESP32
-#include <AsyncTCP.h>
+#include <AsyncTCP.h> /// no tls yet
 #elif defined(ARDUINO_ARCH_ESP8266)
 #include <ESPAsyncTCP.h>
+    #if ASYNC_TCP_SSL_ENABLED
+        #include <tcp_axtls.h>
+        #define SHA1_SIZE 20
+    #endif
 #elif defined(ARDUINO_ARCH_STM32)
 #include <STM32AsyncTCP.h>
 #else
 #error Platform not supported
 #endif
 
-#if ASYNC_TCP_SSL_ENABLED
-#include <tcp_axtls.h>
-#define SHA1_SIZE 20
+#if PANGO_DEBUG
+    template<int I, typename... Args>
+    void PANGO_print(const char* fmt, Args... args) {
+        if (PANGO_DEBUG >= I) Serial.printf(std::string(std::string("D:%d: ")+fmt).c_str(),I,args...);
+    }
+  #define PANGO_PRINT1(...) PANGO_print<1>(__VA_ARGS__)
+  #define PANGO_PRINT2(...) PANGO_print<2>(__VA_ARGS__)
+  #define PANGO_PRINT3(...) PANGO_print<3>(__VA_ARGS__)
+  #define PANGO_PRINT4(...) PANGO_print<4>(__VA_ARGS__)
+#else
+  #define PANGO_PRINT1(...)
+  #define PANGO_PRINT2(...)
+  #define PANGO_PRINT3(...)
+  #define PANGO_PRINT4(...)
 #endif
 
 #define CSTR(x) x.c_str()
@@ -69,22 +86,13 @@ enum PANGO_FAILURE : uint8_t {
     MQTT_SERVER_UNAVAILABLE,
     UNRECOVERABLE_CONNECT_FAIL,
     TLS_BAD_FINGERPRINT,
-    TCP_TIMEOUT,
     SUBSCRIBE_FAIL,
-    INBOUND_QOS_FAIL,
-    OUTBOUND_QOS_FAIL,
     INBOUND_QOS_ACK_FAIL,
     OUTBOUND_QOS_ACK_FAIL,
     INBOUND_PUB_TOO_BIG,
     OUTBOUND_PUB_TOO_BIG,
     BOGUS_PACKET,
-    BOGUS_ACK
-};
-
-struct PANGO_PROPS {
-  uint8_t qos;
-  bool dup;
-  bool retain;
+    X_INVALID_LENGTH
 };
 
 #include"PANGO.h" // common namespace
@@ -136,12 +144,9 @@ struct PANGO_PROPS {
 using PANGO_DELAYED_FREE   = uint8_t*;
 using ADFP                 = PANGO_DELAYED_FREE; // SOOO much less typing - PANGO "delayed free" pointer
 
-using PANGO_BLOCK          = std::pair<size_t,uint8_t*>; // small sized ptr used internally by Packet class UPSCALE ANYWAY?
 using PANGO_FN_VOID        = std::function<void(void)>;
 using PANGO_FN_U8PTR       = std::function<void(uint8_t*,mb* base)>;
 using PANGO_FN_U8PTRU8     = std::function<uint8_t*(uint8_t*)>;
-using PANGO_BLOCK_Q        = std::queue<PANGO_BLOCK>;
-using PANGO_PROPS_t        = struct PANGO_PROPS;
 
 #include"mb.h"
 
@@ -149,10 +154,7 @@ using PANGO_PACKET_MAP      =std::map<uint16_t,mb>; // indexed by messageId
 using PANGO_cbConnect       =std::function<void(bool)>;
 using PANGO_cbDisconnect    =std::function<void(int8_t)>;
 using PANGO_cbError         =std::function<void(uint8_t,int)>;
-using PANGO_cbMessage       =std::function<void(const char*, uint8_t*, PANGO_PROPS_t , size_t, size_t, size_t)>;
-using PANGO_cbPublish       =std::function<void(uint16_t packetId)>;
-using PANGO_cbSubscribe     =std::function<void(uint16_t, uint8_t)>;
-using PANGO_cbUnsubscribe   =std::function<void(uint16_t)>;
+using PANGO_cbMessage       =std::function<void(const char* topic, const uint8_t* payload, size_t len,uint8_t qos,bool retain,bool dup)>;
 
 class Packet;
 class ConnectPacket;
@@ -163,16 +165,11 @@ class PangolinMQTT {
         friend class ConnectPacket;
         friend class PublishPacket;
         
-               PANGO_cbConnect      _cbConnect=nullptr;
-               PANGO_cbDisconnect   _cbDisconnect=nullptr;
-        static PANGO_cbError        _cbError;
-               PANGO_cbMessage      _cbMessage=nullptr;
-               PANGO_cbPublish      _cbPublish=nullptr;
-               PANGO_cbSubscribe    _cbSubscribe=nullptr;
-               PANGO_cbUnsubscribe  _cbUnsubscribe=nullptr;
-#if ASYNC_TCP_SSL_ENABLED
+               PANGO_cbConnect     _cbConnect=nullptr;
+               PANGO_cbDisconnect  _cbDisconnect=nullptr;
+        static PANGO_cbError       _cbError;
+               PANGO_cbMessage     _cbMessage=nullptr;
                uint8_t             _fingerprint[SHA1_SIZE];
-#endif
         static bool                _cleanSession;
                std::string         _clientId;
                std::string         _host;
@@ -195,14 +192,9 @@ class PangolinMQTT {
                void                _onDisconnect(int8_t r);
                void                _onPoll(AsyncClient* client);
                uint8_t*            _packetReassembler(mb);
-
-#ifdef PANGO_DEBUG
-                void                debugHandler(uint8_t* payload,size_t length);
-#endif
     public:
         PangolinMQTT();
                 void                connect();
-                bool                connected(){ return PANGO::TCP; };
                 void                disconnect(bool force = false);
                 const char*         getClientId(){ return _clientId.c_str(); }
                 size_t inline       getMaxPayloadSize(){ return (PANGO::_HAL_getFreeHeap() / 2) - PANGO_HEAP_SAFETY; }
@@ -210,12 +202,54 @@ class PangolinMQTT {
                 void                onDisconnect(PANGO_cbDisconnect callback){ _cbDisconnect=callback; }
                 void                onError(PANGO_cbError callback){ _cbError=callback; }
                 void                onMessage(PANGO_cbMessage callback){ _cbMessage=callback; }
-                void                onPublish(PANGO_cbPublish callback){ _cbPublish=callback; }
-                void                onSubscribe(PANGO_cbSubscribe callback){ _cbSubscribe=callback; }
-                void                onUnsubscribe(PANGO_cbUnsubscribe callback){ _cbUnsubscribe=callback; }
-                uint16_t            publish(const char* topic, uint8_t qos, bool retain, uint8_t* payload, size_t length, bool dup); // <- stupid!!!
-                void                publish(const char* topic, uint8_t qos, bool retain, std::string payload){ publish(topic,qos,retain, (uint8_t*) payload.data(), (size_t) payload.size()+1,false); }
-                void                publish(const char* topic, uint8_t qos, bool retain, String payload){ publish(topic,qos,retain, (uint8_t*) payload.c_str(), (size_t) payload.length()+1,false); }
+                void                publish(const char* topic,const uint8_t* payload, size_t length, uint8_t qos=0,  bool retain=false);
+                void                publish(const char* topic,const char* payload, size_t length, uint8_t qos=0,  bool retain=false);
+                template<typename T>
+                void publish(const char* topic,T v,const char* fmt="%d",uint8_t qos=0,bool retain=false){
+                    char buf[16];
+                    sprintf(buf,fmt,v);
+                    publish(topic, reinterpret_cast<const uint8_t*>(buf), strlen(buf), qos, retain);
+                }
+//              Coalesce templates when C++17 available (if constexpr (x))
+                void xPublish(const char* topic,const char* value, uint8_t qos=0,  bool retain=false) {
+                    publish(topic,reinterpret_cast<const uint8_t*>(value),strlen(value),qos,retain);
+                }
+                void xPublish(const char* topic,String value, uint8_t qos=0,  bool retain=false) {
+                    publish(topic,reinterpret_cast<const uint8_t*>(value.c_str()),value.length(),qos,retain);
+                }
+                void xPublish(const char* topic,std::string value, uint8_t qos=0,  bool retain=false) {
+                    publish(topic,reinterpret_cast<const uint8_t*>(value.c_str()),value.size(),qos,retain);
+                }
+                template<typename T>
+                void xPublish(const char* topic,T value, uint8_t qos=0,  bool retain=false) {
+                    publish(topic,reinterpret_cast<uint8_t*>(&value),sizeof(T),qos,retain);
+                }
+                void xPayload(const uint8_t* payload,size_t len,char*& cp) {
+                    char* p=reinterpret_cast<char*>(malloc(len+1));
+                    memcpy(p,payload,len);
+                    p[len]='\0';
+                    cp=p;
+                }
+                void xPayload(const uint8_t* payload,size_t len,std::string& ss) {
+                    char* cp;
+                    xPayload(payload,len,cp);
+                    ss.assign(cp,strlen(cp));
+                    free(cp);
+                }
+                void xPayload(const uint8_t* payload,size_t len,String& duino) {
+                    char* cp;
+                    xPayload(payload,len,cp);
+                    duino+=cp;
+                    free(cp);
+                }
+
+                template<typename T>
+                void xPayload(const uint8_t* payload,size_t len,T& value) {
+                    if(len==sizeof(T)) memcpy(reinterpret_cast<T*>(&value),payload,sizeof(T));
+                    else _notify(X_INVALID_LENGTH,len);
+                }
+//
+                void                serverFingerprint(const uint8_t* fingerprint);
                 void                setCleanSession(bool cleanSession){ _cleanSession = cleanSession; }
                 void                setClientId(const char* clientId){ _clientId = clientId; }
                 void                setCredentials(const char* username, const char* password = nullptr);
@@ -223,20 +257,11 @@ class PangolinMQTT {
                 void                setServer(IPAddress ip, uint16_t port);
                 void                setServer(const char* host, uint16_t port);
                 void                setWill(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr);
-                uint16_t            subscribe(const char* topic, uint8_t qos);
-                uint16_t            unsubscribe(const char* topic);
-//
-//
-//
-#if ASYNC_TCP_SSL_ENABLED
-//                void                setSecure(bool secure){ _secure=secure; }
-                void                serverFingerprint(const uint8_t* fingerprint);
-#endif
-
+                void                subscribe(const char* topic, uint8_t qos);
+                void                unsubscribe(const char* topic);
 //
 //              DO NOT CALL ANY FUNCTION STARTING WITH UNDERSCORE!!! _
 //
                 void                _handlePacket(mb);
-                void                _fatal(uint8_t e,int info=0);
                 void                _notify(uint8_t e,int info=0);
 };

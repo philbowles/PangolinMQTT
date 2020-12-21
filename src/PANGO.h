@@ -31,7 +31,6 @@ class PangolinMQTT;
 class AsynClient;
 
 using PANGO_FRAGMENTS      = std::vector<mb>;
-using PANGO_REM_LENGTH     = std::pair<uint32_t,uint8_t>;
 using PANGO_MSG_Q          = std::queue<mb>;
 
 namespace PANGO {
@@ -51,28 +50,30 @@ namespace PANGO {
     extern uint32_t         _HAL_getFreeHeap();
     extern const char*      _HAL_getUniqueId();
 
-//    extern size_t           _ackSize(size_t N);
-
     extern void             _ackTCP(size_t len, uint32_t time);
     extern void             _clearFragments();
     extern void             _clearQ(PANGO_MSG_Q*);
-    extern PANGO_REM_LENGTH _getRemainingLength(uint8_t* p);
     extern uint16_t         _peek16(uint8_t* p);
     extern void             _resetPingTimers();
     extern void             _runTXQ();
     extern void             _saveFragment(mb);
     extern void             _send(mb);
     extern void             _txPacket(mb);
-//
-//  These are all safe to call, in fact I recommend you DO!
-//
-    extern void             dumphex(uint8_t* mem, size_t len,uint8_t W=16);
-    extern char*            payloadToCstring(uint8_t* data,size_t len);
-    extern int              payloadToInt(uint8_t* data,size_t len);
-    extern std::string      payloadToStdstring(uint8_t* data,size_t len);
-    extern String           payloadToString(uint8_t* data,size_t len);
-#ifdef PANGO_DEBUG
+
+    extern void             dumphex(const uint8_t* mem, size_t len,uint8_t W=16);
+
+#if PANGO_DEBUG
     extern void             dump(); // null if no debug
     extern char*            getPktName(uint8_t type);
 #endif
 }
+
+#ifdef PANGO_DEBUG
+    template<int I>
+    void pango_dump(const uint8_t* p, size_t len) { if (PANGO_DEBUG >= I) PANGO::dumphex(p,len,16); }
+    #define PANGO_DUMP3(p,l) pango_dump<3>((p),l)
+    #define PANGO_DUMP4(p,l) pango_dump<4>((p),l)
+#else
+  #define PANGO_DUMP3(...)
+  #define PANGO_DUMP4(...)
+#endif
