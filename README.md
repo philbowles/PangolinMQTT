@@ -12,8 +12,8 @@
 * [IMPORTANT NOTE FOR PLATFORMIO USERS](#important-note-for-platformio-users)
 
 # Other Documents
-* [Getting Started](101.md)
-* [Payload Handling and "expert" functions](pl.md)
+* [Getting Started](docs/101.md)
+* [Payload Handling and "expert" functions](docs/pl.md)
 * [Full API specification](docs/api.md)
 * [Using TLS](docs/tls.md)
 * [Challenges of embedded MQTT](docs/qos.md)
