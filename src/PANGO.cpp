@@ -46,7 +46,7 @@ namespace PANGO {
             void                _clearQ(PANGO_MSG_Q*);
             uint16_t            _peek16(uint8_t* p){ return (*(p+1))|(*p << 8); }
             void                _release(mb);
-            void                _resetPingTimers(){ /*Serial.printf("RPT!!! \n");*/_nPollTicks=_nSrvTicks=0; }
+//            void                _resetPingTimers(){ /*Serial.printf("RPT!!! \n");_nPollTicks=*/_nSrvTicks=0; }
             void                _runTXQ();
             void                _saveFragment(mb);
             void                _send(mb);
@@ -115,7 +115,8 @@ const char* PANGO::_HAL_getUniqueId(){
 
 void PANGO::_ackTCP(size_t len, uint32_t time){
     PANGO_PRINT4("TXQ=%d TCP ACK LENGTH=%d\n",TXQ.size(),len);
-    _resetPingTimers();
+//    _resetPingTimers();
+    _nSrvTicks=0;
     size_t amtToAck=len;
     while(amtToAck){
         if(!TXQ.empty()){

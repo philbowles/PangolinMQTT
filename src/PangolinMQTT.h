@@ -92,7 +92,8 @@ enum PANGO_FAILURE : uint8_t {
     INBOUND_PUB_TOO_BIG,
     OUTBOUND_PUB_TOO_BIG,
     BOGUS_PACKET,
-    X_INVALID_LENGTH
+    X_INVALID_LENGTH,
+    NO_SERVER_DETAILS
 };
 
 #include"PANGO.h" // common namespace
@@ -169,41 +170,43 @@ class PangolinMQTT {
                PANGO_cbDisconnect  _cbDisconnect=nullptr;
         static PANGO_cbError       _cbError;
                PANGO_cbMessage     _cbMessage=nullptr;
-               uint8_t             _fingerprint[SHA1_SIZE];
         static bool                _cleanSession;
                std::string         _clientId;
+               uint8_t             _fingerprint[SHA1_SIZE];
                std::string         _host;
-               IPAddress           _ip;
         static uint16_t            _keepalive;
         static std::string         _password;
                uint16_t            _port;
-               bool                _useIp;
         static std::string         _username;
         static std::string         _willPayload;
         static uint8_t             _willQos;
         static bool                _willRetain;
         static std::string         _willTopic;
+               bool                _connected=false;
 
                void                _cleanStart();
                void                _destroyClient();
+               void                _handlePacket(mb);
                void                _handlePublish(mb);
         inline void                _hpDespatch(mb);
                void                _onData(uint8_t* data, size_t len);
                void                _onDisconnect(int8_t r);
                void                _onPoll(AsyncClient* client);
                uint8_t*            _packetReassembler(mb);
+    protected:
+                bool               connected(){ return _connected; }
     public:
         PangolinMQTT();
-                void                connect();
-                void                disconnect(bool force = false);
-                const char*         getClientId(){ return _clientId.c_str(); }
-                size_t inline       getMaxPayloadSize(){ return (PANGO::_HAL_getFreeHeap() / 2) - PANGO_HEAP_SAFETY; }
-                void                onConnect(PANGO_cbConnect callback){ _cbConnect=callback; }
-                void                onDisconnect(PANGO_cbDisconnect callback){ _cbDisconnect=callback; }
-                void                onError(PANGO_cbError callback){ _cbError=callback; }
-                void                onMessage(PANGO_cbMessage callback){ _cbMessage=callback; }
-                void                publish(const char* topic,const uint8_t* payload, size_t length, uint8_t qos=0,  bool retain=false);
-                void                publish(const char* topic,const char* payload, size_t length, uint8_t qos=0,  bool retain=false);
+                void               connect();
+                void               disconnect(bool force = false);
+                const char*        getClientId(){ return _clientId.c_str(); }
+                size_t inline      getMaxPayloadSize(){ return (PANGO::_HAL_getFreeHeap() / 2) - PANGO_HEAP_SAFETY; }
+                void               onConnect(PANGO_cbConnect callback){ _cbConnect=callback; }
+                void               onDisconnect(PANGO_cbDisconnect callback){ _cbDisconnect=callback; }
+                void               onError(PANGO_cbError callback){ _cbError=callback; }
+                void               onMessage(PANGO_cbMessage callback){ _cbMessage=callback; }
+                void               publish(const char* topic,const uint8_t* payload, size_t length, uint8_t qos=0,  bool retain=false);
+                void               publish(const char* topic,const char* payload, size_t length, uint8_t qos=0,  bool retain=false);
                 template<typename T>
                 void publish(const char* topic,T v,const char* fmt="%d",uint8_t qos=0,bool retain=false){
                     char buf[16];
@@ -249,19 +252,17 @@ class PangolinMQTT {
                     else _notify(X_INVALID_LENGTH,len);
                 }
 //
-                void                serverFingerprint(const uint8_t* fingerprint);
-                void                setCleanSession(bool cleanSession){ _cleanSession = cleanSession; }
-                void                setClientId(const char* clientId){ _clientId = clientId; }
-                void                setCredentials(const char* username, const char* password = nullptr);
-                void                setKeepAlive(uint16_t keepAlive){ _keepalive = PANGO_POLL_RATE * keepAlive; }
-                void                setServer(IPAddress ip, uint16_t port);
-                void                setServer(const char* host, uint16_t port);
-                void                setWill(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr);
-                void                subscribe(const char* topic, uint8_t qos);
-                void                unsubscribe(const char* topic);
+                void               serverFingerprint(const uint8_t* fingerprint);
+                void               setCleanSession(bool cleanSession){ _cleanSession = cleanSession; }
+                void               setClientId(const char* clientId){ _clientId = clientId; }
+                void               setCredentials(const char* username, const char* password = nullptr);
+                void               setKeepAlive(uint16_t keepAlive){ _keepalive = PANGO_POLL_RATE * keepAlive; }
+                void               setServer(const char* host, uint16_t port){ _host=host; _port=port; };
+                void               setWill(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr);
+                void               subscribe(const char* topic, uint8_t qos);
+                void               unsubscribe(const char* topic);
 //
 //              DO NOT CALL ANY FUNCTION STARTING WITH UNDERSCORE!!! _
 //
-                void                _handlePacket(mb);
-                void                _notify(uint8_t e,int info=0);
+                void               _notify(uint8_t e,int info=0);
 };

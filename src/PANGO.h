@@ -54,7 +54,6 @@ namespace PANGO {
     extern void             _clearFragments();
     extern void             _clearQ(PANGO_MSG_Q*);
     extern uint16_t         _peek16(uint8_t* p);
-    extern void             _resetPingTimers();
     extern void             _runTXQ();
     extern void             _saveFragment(mb);
     extern void             _send(mb);

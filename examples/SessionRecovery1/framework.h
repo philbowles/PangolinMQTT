@@ -35,9 +35,12 @@ void connectToMqtt() {
   Serial.println("Connecting to MQTT...");
   mqttClient.connect();
 }
+
 void connectToWifi() {
-    Serial.printf("Connecting to Wi-Fi... SSID=%s\n",WIFI_SSID);
+  Serial.printf("Connecting to Wi-Fi... SSID=%s\n",WIFI_SSID);
+  if(!WiFi.isConnected()){
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  } else Serial.printf("Already connected\n");
 }
 
 #ifdef ARDUINO_ARCH_ESP32
@@ -100,26 +103,29 @@ void onMqttError(uint8_t e,uint32_t info){
         break;
     case INBOUND_PUB_TOO_BIG:
         // someone sent you a p[acket that this MCU does not have enough FLASH to handle
-        Serial.printf("ERROR: INBOUND_PUB_TOO_BIG size=%d Max=%d\n",e,mqttClient.getMaxPayloadSize());
+        Serial.printf("ERROR: INBOUND_PUB_TOO_BIG size=%d Max=%d\n",info,mqttClient.getMaxPayloadSize());
         break;
     case OUTBOUND_PUB_TOO_BIG:
         // you tried to send a packet that this MCU does not have enough FLASH to handle
-        Serial.printf("ERROR: OUTBOUND_PUB_TOO_BIG size=%d Max=%d\n",e,mqttClient.getMaxPayloadSize());
+        Serial.printf("ERROR: OUTBOUND_PUB_TOO_BIG size=%d Max=%d\n",info,mqttClient.getMaxPayloadSize());
         break;
     case BOGUS_PACKET: //  Your server sent a control packet type unknown to MQTT 3.1.1 
     //  99.99% unlikely to ever happen, but this message is better than a crash, non? 
-        Serial.printf("ERROR: BOGUS_PACKET TYPE=%02x\n",e,info);
+        Serial.printf("ERROR: BOGUS_PACKET info=%02x\n",info);
         break;
     case X_INVALID_LENGTH: //  An x function rcvd a msg with an unexpected length: probale data corruption or malicious msg 
     //  99.99% unlikely to ever happen, but this message is better than a crash, non? 
-        Serial.printf("ERROR: X_INVALID_LENGTH TYPE=%02x\n",e,info);
+        Serial.printf("ERROR: X_INVALID_LENGTH info=%02x\n",info);
+        break;
+    case NO_SERVER_DETAILS: //  
+    //  99.99% unlikely to ever happen, make sure you call setServer before trying to connect!!!
+        Serial.printf("ERROR:NO_SERVER_DETAILS info=%02x\n",info);
         break;
     default:
       Serial.printf("UNKNOWN ERROR: %u extra info %d",e,info);
       break;
   }
-}
-// end error-handling
+}// end error-handling
 
 #ifdef ARDUINO_ARCH_ESP8266
 void onWifiConnect(const WiFiEventStationModeGotIP& event) {
@@ -135,6 +141,10 @@ void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
 #endif
 
 extern void onMqttDisconnect(int8_t reason);
+void onMqttDisconnect(int8_t reason) {
+  Serial.printf("Disconnected from MQTT reason=%d\n",reason);
+  mqttReconnectTimer.once(RECONNECT_DELAY_M, connectToMqtt);
+}
 
 void setup() {
   Serial.begin(115200);
@@ -160,7 +170,7 @@ void setup() {
 #if ASYNC_TCP_SSL_ENABLED
   mqttClient.serverFingerprint(cert);
 #endif
-  
-  connectToWifi();
+
+  WiFi.disconnect(); // prevent fast-start already connected timing problems
   userSetup();
 }

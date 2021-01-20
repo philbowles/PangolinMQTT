@@ -1,6 +1,6 @@
 #define WIFI_SSID "XXXXXXXX"
 #define WIFI_PASSWORD "XXXXXXXX"
-#define MQTT_HOST IPAddress(192, 168, 1, 4)
+#define MQTT_HOST "192.168.1.4"
 // if using TLS, edit config.h and #define ASYNC_TCP_SSL_ENABLED 1
 // do the same in async_config.h of the PATCHED ESPAsyncTCP library!! 
 const uint8_t cert[20] = { 0x9a, 0xf1, 0x39, 0x79,0x95,0x26,0x78,0x61,0xad,0x1d,0xb1,0xa5,0x97,0xba,0x65,0x8c,0x20,0x5a,0x9c,0xfa };

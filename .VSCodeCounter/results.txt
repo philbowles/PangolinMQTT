@@ -1,0 +1,63 @@
+Date : 2021-01-18 15:13:56
+Directory : c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT
+Total : 29 files,  2450 codes, 501 comments, 572 blanks, all 3523 lines
+
+Languages
++--------------------+------------+------------+------------+------------+------------+
+| language           | files      | code       | comment    | blank      | total      |
++--------------------+------------+------------+------------+------------+------------+
+| C++                |         17 |      1,815 |        501 |        199 |      2,515 |
+| Markdown           |         10 |        618 |          0 |        373 |        991 |
+| Properties         |          1 |          9 |          0 |          0 |          9 |
+| JSON with Comments |          1 |          8 |          0 |          0 |          8 |
++--------------------+------------+------------+------------+------------+------------+
+
+Directories
++-------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                  | files      | code       | comment    | blank      | total      |
++-------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                     |         29 |      2,450 |        501 |        572 |      3,523 |
+| src                                                                                                   |          9 |      1,019 |        320 |        110 |      1,449 |
+| examples                                                                                              |          8 |        796 |        181 |         89 |      1,066 |
+| docs                                                                                                  |          9 |        542 |          0 |        322 |        864 |
+| examples\ExpertFunctions                                                                              |          2 |        224 |         41 |         20 |        285 |
+| examples\SessionRecovery2                                                                             |          2 |        203 |         51 |         25 |        279 |
+| examples\SessionRecovery1                                                                             |          2 |        202 |         53 |         23 |        278 |
+| examples\QuickStart                                                                                   |          2 |        167 |         36 |         21 |        224 |
++-------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| filename                                                                                              | language           | code       | comment    | blank      | total      |
++-------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\README.md                                      | Markdown           |         76 |          0 |         51 |        127 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\docs\101.md                                    | Markdown           |         80 |          0 |         28 |        108 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\docs\api.md                                    | Markdown           |         91 |          0 |         32 |        123 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\docs\pl.md                                     | Markdown           |        156 |          0 |         93 |        249 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\docs\qos.md                                    | Markdown           |         73 |          0 |         68 |        141 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\docs\rn008.md                                  | Markdown           |         25 |          0 |         19 |         44 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\docs\rn100.md                                  | Markdown           |         38 |          0 |         28 |         66 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\docs\rn101.md                                  | Markdown           |         28 |          0 |         21 |         49 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\docs\stm32.md                                  | Markdown           |         17 |          0 |         13 |         30 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\docs\tls.md                                    | Markdown           |         34 |          0 |         20 |         54 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\examples\ExpertFunctions\ExpertFunctions.ino   | C++                |         92 |         17 |          6 |        115 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\examples\ExpertFunctions\framework.h           | C++                |        132 |         24 |         14 |        170 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\examples\QuickStart\QuickStart.ino             | C++                |         33 |         12 |          7 |         52 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\examples\QuickStart\framework.h                | C++                |        134 |         24 |         14 |        172 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\examples\SessionRecovery1\SessionRecovery1.ino | C++                |         74 |         29 |          9 |        112 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\examples\SessionRecovery1\framework.h          | C++                |        128 |         24 |         14 |        166 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\examples\SessionRecovery2\SessionRecovery2.ino | C++                |         74 |         27 |         11 |        112 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\examples\SessionRecovery2\framework.h          | C++                |        129 |         24 |         14 |        167 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\library.properties                             | Properties         |          9 |          0 |          0 |          9 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\pango-workspace.code-workspace                 | JSON with Comments |          8 |          0 |          0 |          8 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\src\PANGO.cpp                                  | C++                |        179 |         33 |         19 |        231 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\src\PANGO.h                                    | C++                |         43 |         28 |          9 |         80 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\src\Packet.cpp                                 | C++                |        141 |         30 |         13 |        184 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\src\Packet.h                                   | C++                |         99 |         24 |          8 |        131 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\src\PangolinMQTT.cpp                           | C++                |        268 |         37 |         22 |        327 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\src\PangolinMQTT.h                             | C++                |        179 |         74 |         16 |        269 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\src\config.h                                   | C++                |          6 |         36 |          7 |         49 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\src\mb.cpp                                     | C++                |         72 |         33 |          9 |        114 |
+| c:\Users\phil\Documents\Arduino\libraries\PangolinMQTT\src\mb.h                                       | C++                |         32 |         25 |          7 |         64 |
+| Total                                                                                                 |                    |      2,450 |        501 |        572 |      3,523 |
++-------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+

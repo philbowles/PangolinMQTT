@@ -26,6 +26,7 @@ INBOUND_PUB_TOO_BIG, // someone sent you a waaaaaay too big message
 OUTBOUND_PUB_TOO_BIG, // you tried to send out a a waaaaaay too big message
 BOGUS_PACKET, // should never happen - server sent malformed / unrecognised packet - SERIOUS PROBLEM
 X_INVALID_LENGTH // length of payload does not match expected data type in x functions - server sent malformed message - SERIOUS PROBLEM
+NO_SERVER_DETAILS // very silly if you let this happen - call setServer before connect!!!
 */
 
 ```
@@ -56,7 +57,6 @@ void setCleanSession(bool cleanSession); // optional, default is clean session
 void setClientId(const char* clientId); // optional if you want to control your own device name
 void setCredentials(const char* username, const char* password = nullptr); // optional if your server requires them
 void setKeepAlive(uint16_t keepAlive); // probably best left alone... note actual rate is PANGO_POLL_RATE * keepAlive; and depends on your LwIP
-void setServer(IPAddress ip, uint16_t port); 
 void setServer(const char* host, uint16_t port);
 void setWill(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr); // optional
 
