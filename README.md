@@ -91,10 +91,7 @@ PangolinMQTT's author has provided a bugfix version of the above library, see [U
 
 Pangolin is an *Arduino library*, and is 100% compatible with the ArduinoIDE and its build system. PlatformIO, sadly, ***is not***. If PlatformIO has problems with code that compiles and runs correctly under ArduinoIDE, then it is a ***PlatformIO problem***, not an issue with this - or any other - valid Arduino library.
 
-For well over 3 years I have been notifying the PlatformIO team of errors in their build setting related to the use of non-standard and non ArduinoIDE-compatible architecture #defines which break *many* valid Arduino libraries. They have failed persitently to fix their own problems, so I will not accept any issues relating to build problems with PlatformIO, nor any pull requests nor other suggestions which involve any changes that render the library less than 100% ArduinoIDE compatible. If you don't like this, you have two options:
-
-* Petition, moan, complain to PlatformIO dev team to make it 100% Arduino-compatible
-* Use another library: my position ***will not change*** until PlatformIO ~~get off their lazy asses~~ fix their problems, so don't waste your time or mine asking.
+For this reason, I will not accept any issues relating to build problems with PlatformIO, nor any pull requests nor other suggestions which involve any changes that render this library less than 100% ArduinoIDE compatible. 
 
 ## Non PlatformIO-related issues
 
@@ -110,7 +107,7 @@ So, always provide: the MCU/board type, a good description of the problem, how /
 
 ## And finally...
 
-This is open-source, I do it in my own time, for free. If you want professional-level support because you are using *my* work to benefit your own commercial gain, then I'm happy to talk privately about a paid contract. Or you can support me on [Patreon](https://www.patreon.com/esparto) 
+This is open-source, I do it in my own time, for free. If you want professional-level support because you are using *my* work to benefit your own commercial gain, then I'm happy to talk privately about a paid support contract. Or you can support me on [Patreon](https://www.patreon.com/esparto) 
 
 ---
 
