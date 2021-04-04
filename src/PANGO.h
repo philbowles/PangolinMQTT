@@ -56,7 +56,6 @@ namespace PANGO {
     extern uint16_t         _peek16(uint8_t* p);
     extern void             _runTXQ();
     extern void             _saveFragment(mb);
-    extern void             _send(mb);
     extern void             _txPacket(mb);
 
     extern void             dumphex(const uint8_t* mem, size_t len,uint8_t W=16);

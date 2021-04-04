@@ -24,7 +24,8 @@ SOFTWARE.
 */
 #pragma once
 
-#include"config.h"
+#include"pango_config.h"
+
 #include<Arduino.h>
 #include<functional>
 #include<string>
@@ -63,7 +64,6 @@ SOFTWARE.
   #define PANGO_PRINT4(...)
 #endif
 
-#define CSTR(x) x.c_str()
 enum :uint8_t {
     CONNECT     = 0x10, // x
     CONNACK     = 0x20, // x
@@ -196,6 +196,8 @@ class PangolinMQTT {
     protected:
                 bool               connected(){ return _connected; }
     public:
+    
+        ~PangolinMQTT(){};
         PangolinMQTT();
                 void               connect();
                 void               disconnect(bool force = false);

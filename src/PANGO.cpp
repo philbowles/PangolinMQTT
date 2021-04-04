@@ -46,10 +46,8 @@ namespace PANGO {
             void                _clearQ(PANGO_MSG_Q*);
             uint16_t            _peek16(uint8_t* p){ return (*(p+1))|(*p << 8); }
             void                _release(mb);
-//            void                _resetPingTimers(){ /*Serial.printf("RPT!!! \n");_nPollTicks=*/_nSrvTicks=0; }
             void                _runTXQ();
             void                _saveFragment(mb);
-            void                _send(mb);
             void                _txPacket(mb);
 //
             void                dumphex(const uint8_t* mem, size_t len,uint8_t W);
@@ -84,18 +82,7 @@ namespace PANGO {
 #endif
 }
 
-#if defined(ARDUINO_ARCH_STM32)
-#include <STM32Ethernet.h>
-void PANGO::_HAL_feedWatchdog(){}
-uint32_t PANGO::_HAL_getFreeHeap(){ return 30000; }
-const char* PANGO::_HAL_getUniqueId(){
-    static char buf[13]="";
-    uint8_t *mac;
-    mac = Ethernet.MACAddress();
-    sprintf(buf,"stm32-%02X%02X%02X",mac[3],mac[4],mac[5]);
-    return buf;
-}
-#elif defined(ARDUINO_ARCH_ESP32)
+#if defined(ARDUINO_ARCH_ESP32)
 void PANGO::_HAL_feedWatchdog(){}
 uint32_t PANGO::_HAL_getFreeHeap(){ return ESP.getMaxAllocHeap(); }
 const char* PANGO::_HAL_getUniqueId(){
@@ -114,15 +101,15 @@ const char* PANGO::_HAL_getUniqueId(){
 #endif
 
 void PANGO::_ackTCP(size_t len, uint32_t time){
-    PANGO_PRINT4("TXQ=%d TCP ACK LENGTH=%d\n",TXQ.size(),len);
-//    _resetPingTimers();
+    PANGO_PRINT4("TXQlen=%d ACK LENGTH=%d _secure=%d\n",TXQ.size(),len,_secure);
     _nSrvTicks=0;
     size_t amtToAck=len;
     while(amtToAck){
         if(!TXQ.empty()){
             mb tmp=TXQ.front();
             TXQ.pop();
-            PANGO_PRINT4("TXQ=%d TCP frag ACK LENGTH=%d acksize=%d amtleft=%d\n",TXQ.size(),tmp.len,69+((tmp.len>>4)<<4),amtToAck);
+            int sub=_secure ? 69+((tmp.len>>4)<<4):tmp.len;
+            PANGO_PRINT4("amt2ack=%d _secure=%d sub=%d leaving %d\n",amtToAck,_secure,sub,amtToAck-sub);
             amtToAck-=_secure ? 69+((tmp.len>>4)<<4):tmp.len;//_ackSize(tmp.len);
             tmp.ack();
         } else break;
@@ -152,29 +139,27 @@ void PANGO::_release(mb m){
         do{
             size_t toSend=std::min(_space,bytesLeft);
             _HAL_feedWatchdog();
-//            PANGO_PRINT("OUTBOUND CHUNK len=%d space=%d BL=%d\n",toSend,_space,bytesLeft);
+            PANGO_PRINT4("OUTBOUND CHUNK len=%d space=%d BL=%d\n",toSend,_space,bytesLeft);
             TXQ.push(mb(toSend,m.data+(m.len - bytesLeft),m.id,(--nFrags) ? (ADFP) nFrags:m.data,true)); // very naughty, but works :)
             bytesLeft-=toSend;
         } while(bytesLeft);
         TXQ.pop(); // hara kiri - queue is now n smaller copies of yourself!
         _runTXQ();
-    } else _send(m);
+    } 
+    else {//_send(m);
+        PANGO_PRINT2("----> TX %s %d bytes\n",getPktName(m.data[0]),m.len);
+        PANGO_DUMP3(m.data,m.len);
+        TCP->add((const char*) m.data,m.len); // ESPAsyncTCP is WRONG on this, it should be a uint8_t*
+        TCP->send();
+    }
 }
 
-void  PANGO::_runTXQ(){ if(!TXQ.empty()) _release(TXQ.front()); } // DON'T POP Q!!! - gets popped when sent packet is ACKed
+void  PANGO::_runTXQ(){ if(!TXQ.empty()) _release(TXQ.front()); }
 
 void PANGO::_saveFragment(mb m){
     uint8_t* frag=static_cast<uint8_t*>(malloc(m.len));
     memcpy(frag,m.data,m.len);
-//    PANGO_PRINT("SAVE FRAGMENT (%d) from %08X -> %08X\n",m.len,m.data,frag); // copy Q
     _fragments.push_back(mb(m.len,frag,0,(ADFP) _fragments.size(),true));
-}
-
-void PANGO::_send(mb m){
-    PANGO_PRINT2("----> TX %s %d bytes\n",PANGO::getPktName(m.data[0]),m.len);
-    PANGO_DUMP3(m.data,m.len);
-    TCP->add((const char*) m.data,m.len); // ESPAsyncTCP is WRONG on this, it should be a uint8_t*
-    TCP->send();
 }
 
 void  PANGO::_txPacket(mb m){

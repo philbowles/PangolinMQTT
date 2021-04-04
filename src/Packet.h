@@ -103,7 +103,7 @@ class SubscribePacket: public Packet {
         uint8_t         _qos;
         SubscribePacket(const std::string& topic,uint8_t qos): _topic(topic),_qos(qos),Packet(SUBSCRIBE,1,true) {
             _id=++_nextId;
-            _begin=[this]{ _stringblock(CSTR(_topic)); };
+            _begin=[this]{ _stringblock(_topic.c_str()); };
             _end=[this](uint8_t* p,mb* base){ *p=_qos; };
             _build();
         }
@@ -113,7 +113,7 @@ class UnsubscribePacket: public Packet {
     public:
         UnsubscribePacket(const std::string& topic): _topic(topic),Packet(UNSUBSCRIBE,0,true) {
             _id=++_nextId;
-            _begin=[this]{ _stringblock(CSTR(_topic)); };
+            _begin=[this]{ _stringblock(_topic.c_str()); };
             _build();
         }
 };

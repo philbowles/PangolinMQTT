@@ -48,8 +48,6 @@ class mb {
                 uint32_t        plen;
                 bool            pubrec=false;
 
-//        ~mb(){} // ABSOLUTELY DO NOT EVER NOT NEVER NOHOW FREE data HERE!!!!
-
         mb(){ retries=PANGO::_maxRetries;managed=true; /* PANGO_PRINT("DEFAULT CTOR managed=%d\n",managed); */ }; // only in raw packet construction
         mb(ADFP,bool manage=true); // create skeleton mb from inbound raw data - the usual case
         mb(size_t l,uint8_t* d,uint16_t i=0,ADFP f=nullptr,bool manage=false);

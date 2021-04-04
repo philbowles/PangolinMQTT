@@ -84,6 +84,7 @@ void Packet::_resendPartialTxns(){
                 PubrelPacket prp(m.id);
             }
             else {
+                PANGO_PRINT4("SET DUP & RESEND %s %d\n",m.id,PANGO::getPktName(m.data[0]));
                 m.data[0]|=0x08; // set dup & resend
                 PANGO::_txPacket(m);
             }
@@ -93,7 +94,7 @@ void Packet::_resendPartialTxns(){
             morituri.push_back(m.id); // all hope exhausted TODO: reconnect?
         }
     }
-   for(auto const& i:morituri) _ACKoutbound(i);
+    for(auto const& i:morituri) _ACKoutbound(i);
 }
 
 void Packet::_idGarbage(uint16_t id){
@@ -102,7 +103,6 @@ void Packet::_idGarbage(uint16_t id){
     p[1]=2;
     _poke16(&p[2],id);
     PANGO::_txPacket(mb(p,true));
-    // Do NOT free p here!!! Gets freed by mb.clear() @ ack time
 }
 
 uint8_t* Packet::_poke16(uint8_t* p,uint16_t u){
@@ -158,7 +158,7 @@ PublishPacket::PublishPacket(const char* topic, uint8_t qos, bool retain, const 
     _topic(topic),_qos(qos),_retain(retain),_length(length),_dup(dup),_givenId(givenId),Packet(PUBLISH) {
         if(length < PANGO::LIN->getMaxPayloadSize()){
             _begin=[this]{ 
-                _stringblock(CSTR(_topic));
+                _stringblock(_topic.c_str());
                 _bs+=_length;
                 byte flags=_retain;
                 flags|=(_dup << 3);

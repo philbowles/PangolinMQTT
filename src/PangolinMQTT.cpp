@@ -38,6 +38,7 @@ PANGO_cbError        PangolinMQTT::_cbError=nullptr;
 PangolinMQTT::PangolinMQTT() { 
     PANGO::LIN=this;
     PANGO::TCP=new AsyncClient;
+    PANGO_PRINT1("RX t/o=%d ACK t/o=%d\n",PANGO::TCP->getRxTimeout(),PANGO::TCP->getAckTimeout());
     PANGO::TCP->setNoDelay(true);
     PANGO::TCP->onConnect([this](void* obj, AsyncClient* c) { 
     #if ASYNC_TCP_SSL_ENABLED
@@ -50,7 +51,7 @@ PangolinMQTT::PangolinMQTT() {
             }
         }
     #endif
-        ConnectPacket cp{};
+        if(!_connected) ConnectPacket cp{};
     }); // *NOT* A MEMORY LEAK! :)
     PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { PANGO_PRINT1("TCP CHOPPED US!\n"); _onDisconnect(TCP_DISCONNECTED); });
     PANGO::TCP->onError([this](void* obj, AsyncClient* c,int error) { PANGO_PRINT1("TCP_ERROR %d\n",error); _onDisconnect(error); });
@@ -75,15 +76,7 @@ void PangolinMQTT::serverFingerprint(const uint8_t* fingerprint) {
     memcpy(_fingerprint, fingerprint, SHA1_SIZE);
     PANGO::_secure=true;
 }
-/*
-void PangolinMQTT::_destroyClient(){
-    if(PANGO::TCP) {
-        PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { }); // prevent recursion
-        delete PANGO::TCP; // causes a recurse!
-        PANGO::TCP=nullptr;
-    }
-}
-*/
+
 void PangolinMQTT::_hpDespatch(mb m){ if(_cbMessage) _cbMessage(m.topic.c_str(), m.payload, m.plen, m.qos, m.retain, m.dup); }
 
 void PangolinMQTT::_onDisconnect(int8_t r) {
@@ -93,11 +86,7 @@ void PangolinMQTT::_onDisconnect(int8_t r) {
     _connected=false;
     PANGO::_clearQ(&PANGO::TXQ);
     PANGO::_clearFragments();
-    PANGO::_nPollTicks=PANGO::_nSrvTicks=0;
-//    if(PANGO::TCP){
-//        _destroyClient();
-        if(_cbDisconnect) _cbDisconnect(r);
-//    }
+    if(_cbDisconnect) _cbDisconnect(r);
 }
 
 void PangolinMQTT::_notify(uint8_t e,int info){ 
@@ -138,8 +127,11 @@ void PangolinMQTT::_handlePacket(mb m){
             else {
                 _connected=true;
                 PANGO::_space=PANGO::TCP->space();
+                PANGO_PRINT1("MSS=%d space=%d\n",PANGO::TCP->getMss(),PANGO::TCP->space());
+                PANGO_PRINT1("RX t/o=%d ACK t/o=%d\n",PANGO::TCP->getRxTimeout(),PANGO::TCP->getAckTimeout());
                 bool session=i[0] & 0x01;
                 Packet::_resendPartialTxns();
+                PANGO::_nPollTicks=PANGO::_nSrvTicks=0;
                 PANGO_PRINT1("CONNECTED FH=%u MaxPL=%u SESSION %s\n",PANGO::_HAL_getFreeHeap(),getMaxPayloadSize(),session ? "DIRTY":"CLEAN");
                 if(_cbConnect) _cbConnect(session);
             }
@@ -263,7 +255,7 @@ void PangolinMQTT::_onPoll(AsyncClient* client) {
         ++PANGO::_nSrvTicks;
 
         if(PANGO::_nSrvTicks > ((_keepalive * 3) / 2)) { // safe headroom
-            PANGO_PRINT1("T=%u SRV GONE? ka=%d tix=%d\n",millis(),_keepalive,PANGO::_nSrvTicks);
+            PANGO_PRINT1("T=%u SRV GONE? ka=%d Stix=%d\n",millis(),_keepalive,PANGO::_nSrvTicks);
             _onDisconnect(MQTT_SERVER_UNAVAILABLE);
         }
         else {
@@ -277,43 +269,17 @@ void PangolinMQTT::_onPoll(AsyncClient* client) {
 }
 
 void PangolinMQTT::connect() {
-    if(_host=="" || _port==0) return _notify(NO_SERVER_DETAILS);
-/*
-    if(PANGO::TCP) {
-        PANGO::TCP->close(true); // error?
-        delete PANGO::TCP;
+    if(!_connected){
+        if(_host=="" || _port==0) return _notify(NO_SERVER_DETAILS);
+        if(_clientId=="") _clientId=PANGO::_HAL_getUniqueId();
+        PANGO_PRINT1("CONNECTING to %s:%d as %s FH=%u session=%d\n",_host.c_str(),_port,_clientId.c_str(),PANGO::_HAL_getFreeHeap(),_cleanSession);
+        if(_cleanSession) _cleanStart();
+        #if ASYNC_TCP_SSL_ENABLED
+            PANGO::TCP->connect(_host.c_str(), _port, true);
+        #else
+            PANGO::TCP->connect(_host.c_str(), _port);
+        #endif
     }
-*/
-    if(_clientId=="") _clientId=PANGO::_HAL_getUniqueId();
-    PANGO_PRINT1("CONNECTING to %s:%d as %s FH=%u session=%d\n",_host.c_str(),_port,_clientId.c_str(),PANGO::_HAL_getFreeHeap(),_cleanSession);
-    if(_cleanSession) _cleanStart();
-/*
-    PANGO::TCP=new AsyncClient;
-    PANGO::TCP->setNoDelay(true);
-    PANGO::TCP->onConnect([this](void* obj, AsyncClient* c) { 
-    #if ASYNC_TCP_SSL_ENABLED
-        if(PANGO::_secure) {
-            SSL* clientSsl = PANGO::TCP->getSSL();
-            if (ssl_match_fingerprint(clientSsl, _fingerprint) != SSL_OK) {
-                _notify(TLS_BAD_FINGERPRINT);
-                PANGO::TCP=nullptr;
-                return;
-            }
-        }
-    #endif
-        ConnectPacket cp{};
-    }); // *NOT* A MEMORY LEAK! :)
-    PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { PANGO_PRINT1("TCP CHOPPED US!\n"); _onDisconnect(TCP_DISCONNECTED); });
-    PANGO::TCP->onError([this](void* obj, AsyncClient* c,int error) { PANGO_PRINT1("TCP_ERROR %d\n",error); _onDisconnect(error); });
-    PANGO::TCP->onAck([this](void* obj, AsyncClient* c,size_t len, uint32_t time){ PANGO::_ackTCP(len,time); }); 
-    PANGO::TCP->onData([this](void* obj, AsyncClient* c, void* data, size_t len) { _onData(static_cast<uint8_t*>(data), len); });
-    PANGO::TCP->onPoll([this](void* obj, AsyncClient* c) { _onPoll(c); });
-    */
-    #if ASYNC_TCP_SSL_ENABLED
-        PANGO::TCP->connect(_host.c_str(), _port, true);
-    #else
-        PANGO::TCP->connect(_host.c_str(), _port);
-    #endif
 }
 
 void PangolinMQTT::disconnect(bool force) {
@@ -342,12 +308,12 @@ void PangolinMQTT::publish(const char* topic, const char* payload, size_t length
 }
 
 void PangolinMQTT::_cleanStart(){
+    PANGO_PRINT4("_cleanStart\n");
     for(auto &i:Packet::_inbound) i.second.clear();
     Packet::_inbound.clear();
 
     for(auto &i:Packet::_outbound) i.second.clear();
     Packet::_outbound.clear();
 
-    PANGO_PRINT4("We are now clean:)\n");
     Packet::_nextId=1000; // SO much easier to differentiate client vs server IDs in Wireshark log :)
 }

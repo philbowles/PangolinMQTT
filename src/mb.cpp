@@ -66,38 +66,28 @@ mb::mb(ADFP p, bool track): data(p),managed(track) {
 
 void mb::ack(){
     if(frag){
-//        PANGO_PRINT("**** FRAGGY MB %08X frag=%08X\n",data,frag);
         if((int) frag < 100) return; // some arbitrarily ridiculous max numberof _fragments
         data=frag; // reset data pointer to FIRST fragment, so whole block is freed
         _deriveQos(); // recover original QOS from base fragment
     } 
-//    PANGO_PRINT("**** PROTOCOL ACK MB %08X TYPE %02X L=%d I=%d Q=%d F=%08X R=%d\n",data,data[0],len,id,qos,frag,retries);
     if(!(isPub() && qos)) clear();
-//    else PANGO_PRINT("HELD MB %08X TYPE %02X L=%d I=%d Q=%d F=%08X R=%d\n",data,data[0],len,id,qos,frag,retries);
 }
 
 void mb::clear(){
     if(managed){
         if(pool.count(data)) {
- //           PANGO_PRINT("*********************************** FH=%u KILL POOL %08X %d remaining\n\n",PANGO::_HAL_getFreeHeap()),data,pool.size());
             if(data){
                 free(data);
                 pool.erase(data);
-            } //else PANGO_PRINT("WARNING!!! ZERO MEM BLOCK %08X\n",z);
+            }
         }
-//        else PANGO_PRINT("WARNING!!! DOUBLE DIP DELETE! %08X len=%d type=%02X id=%d\n",data,len,data[0],id);
-    } //else PANGO_PRINT("UNMANAGED\n");
+    }
 }
 
 void mb::manage(){
-//    PANGO_PRINT("MANAGE %08X\n",data);
     if(managed){
-        if(!pool.count(data)) {
-//            PANGO_PRINT("\n*********************************** FH=%u INTO POOL %08X TYPE %s len=%d IN Q %u\n",PANGO::_HAL_getFreeHeap()),data,PANGO::getPktName(data[0]),len,pool.size());
-            pool.insert(data);
-//            dump();
-        } //else PANGO_PRINT("\n* NOT ***************************** INTO POOL %08X %d IN Q\n",p,pool.size());
-    } //else PANGO_PRINT("* NOT MANAGED\n");
+        if(!pool.count(data)) pool.insert(data);
+    }
     _deriveQos();
 }
 
@@ -106,7 +96,7 @@ void mb::dump(){
     if(data){
         PANGO_PRINT4("MB %08X TYPE %02X L=%d M=%d O=%d I=%d Q=%d F=%08X\n",data,data[0],len,managed,offset,id,qos,frag);
         PANGO::dumphex(data,len);
-    } else PANGO_PRINT4("MB %08X ZL or bare: can't dump\n",data);
+    }
 }
 #else
 void mb::dump(){}
