@@ -2,7 +2,7 @@
 
 # ArduinoIDE MQTT client library for ESP8266, ESP32
 
-###### Version 1.0.1 [Release Notes](docs/rn101.md)
+###### Version 2.0.0 [Release Notes](docs/rn200.md)
 
 * [Features](#features)
 * [Performance](#performance)
