@@ -26,15 +26,14 @@ SOFTWARE.
 #include<Packet.h> // remove this by moving packet statics into asmq
 
 namespace PANGO {
-            AsyncClient*        TCP;
+//            AsyncClient*        TCP;
             PANGO_MSG_Q         TXQ;
-            PangolinMQTT*       LIN;
+            PangolinMQTT*       TCP;
             PANGO_FRAGMENTS     _fragments={};
             bool                _inflight=false;
             uint16_t            _maxRetries=PANGO_MAX_RETRIES;
             uint32_t            _nPollTicks;
             uint32_t            _nSrvTicks;
-            bool                _secure=false;
             size_t              _space=536; // rogue starting value as true value not known untill after connect!
 
             void                _HAL_feedWatchdog();
@@ -101,6 +100,7 @@ const char* PANGO::_HAL_getUniqueId(){
 #endif
 
 void PANGO::_ackTCP(size_t len, uint32_t time){
+    bool _secure=!PANGO::TCP->_URL->insecure;
     PANGO_PRINT4("TXQlen=%d ACK LENGTH=%d _secure=%d\n",TXQ.size(),len,_secure);
     _nSrvTicks=0;
     size_t amtToAck=len;

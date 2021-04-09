@@ -34,14 +34,12 @@ using PANGO_FRAGMENTS      = std::vector<mb>;
 using PANGO_MSG_Q          = std::queue<mb>;
 
 namespace PANGO {
-    extern  AsyncClient*     TCP;
-    extern  PangolinMQTT*    LIN;
+    extern  PangolinMQTT*    TCP;
     extern  PANGO_MSG_Q      TXQ;
     extern  PANGO_FRAGMENTS  _fragments;
     extern  uint16_t         _maxRetries;
     extern  uint32_t         _nPollTicks;
     extern  uint32_t         _nSrvTicks;
-    extern  bool             _secure;
     extern  size_t           _space;
 //
 //  NEVER call anything that stats with underscore! "_"

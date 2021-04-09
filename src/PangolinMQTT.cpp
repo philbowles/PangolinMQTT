@@ -25,44 +25,55 @@ SOFTWARE.
 #include <PangolinMQTT.h>
 #include "Packet.h"
 
-std::string          PangolinMQTT::_username;
-std::string          PangolinMQTT::_password;
 std::string          PangolinMQTT::_willTopic;
 std::string          PangolinMQTT::_willPayload;
 uint8_t              PangolinMQTT::_willQos;
 bool                 PangolinMQTT::_willRetain;
 uint16_t             PangolinMQTT::_keepalive=15 * PANGO_POLL_RATE; // 10 seconds
 bool                 PangolinMQTT::_cleanSession=true;
-PANGO_cbError        PangolinMQTT::_cbError=nullptr;
 
-PangolinMQTT::PangolinMQTT() { 
-    PANGO::LIN=this;
-    PANGO::TCP=new AsyncClient;
-    PANGO_PRINT1("RX t/o=%d ACK t/o=%d\n",PANGO::TCP->getRxTimeout(),PANGO::TCP->getAckTimeout());
-    PANGO::TCP->setNoDelay(true);
-    PANGO::TCP->onConnect([this](void* obj, AsyncClient* c) { 
+PangolinMQTT::PangolinMQTT(): smartClient(){
+    PANGO::TCP=this;
+    setNoDelay(true);
+    onConnect([this](void* obj, AsyncClient* c) { 
     #if ASYNC_TCP_SSL_ENABLED
-        if(PANGO::_secure) {
-            SSL* clientSsl = PANGO::TCP->getSSL();
-            if (ssl_match_fingerprint(clientSsl, _fingerprint) != SSL_OK) {
-                _notify(TLS_BAD_FINGERPRINT);
-                PANGO::TCP=nullptr;
-                return;
+        #if PANGO_CHECK_FINGERPRINT
+            if(!_URL->insecure) {
+                SSL* clientSsl = getSSL();
+                if (ssl_match_fingerprint(clientSsl, _fingerprint) != SSL_OK) {
+                    _notify(TLS_BAD_FINGERPRINT);
+                    return;
+                }
             }
-        }
+        #else
+            Serial.printf("WARNING! Fingerpint not checked!\n");
+        #endif
     #endif
         if(!_connected) ConnectPacket cp{};
-    }); // *NOT* A MEMORY LEAK! :)
-    PANGO::TCP->onDisconnect([this](void* obj, AsyncClient* c) { PANGO_PRINT1("TCP CHOPPED US!\n"); _onDisconnect(TCP_DISCONNECTED); });
-    PANGO::TCP->onError([this](void* obj, AsyncClient* c,int error) { PANGO_PRINT1("TCP_ERROR %d\n",error); _onDisconnect(error); });
-    PANGO::TCP->onAck([this](void* obj, AsyncClient* c,size_t len, uint32_t time){ PANGO::_ackTCP(len,time); }); 
-    PANGO::TCP->onData([this](void* obj, AsyncClient* c, void* data, size_t len) { _onData(static_cast<uint8_t*>(data), len); });
-    PANGO::TCP->onPoll([this](void* obj, AsyncClient* c) { _onPoll(c); });
-}
+    });
+    onDisconnect([this](void* obj, AsyncClient* c) { PANGO_PRINT1("TCP CHOPPED US!\n"); _onDisconnect(TCP_DISCONNECTED); });
+    onError([=](void* obj, AsyncClient* c,int error) { PANGO_PRINT1("TCP_ERROR %d\n",error); _onDisconnect(error); });
+    onAck([=](void* obj, AsyncClient* c,size_t len, uint32_t time){ PANGO::_ackTCP(len,time); }); 
+    onData([=](void* obj, AsyncClient* c, void* data, size_t len) { _onData(static_cast<uint8_t*>(data), len); });
+    onPoll([=](void* obj, AsyncClient* c) { _onPoll(); });
+} 
 
-void PangolinMQTT::setCredentials(const char* username, const char* password) {
-  _username = username;
-  _password = password;
+void PangolinMQTT::setServer(const char* url,const char* username, const char* password,const uint8_t* fingerprint){
+    _username = username;
+    _password = password;
+    _parseURL(url);
+    if(_URL->insecure){
+        Serial.printf("??????????? FP=0x%08x\n",(void*) fingerprint);
+        if(fingerprint) _notify(TLS_UNWANTED_FINGERPRINT);
+    }
+    else {
+    #if ASYNC_TCP_SSL_ENABLED
+        if(fingerprint) memcpy(_fingerprint, fingerprint, SHA1_SIZE);
+        else _notify(TLS_NO_FINGERPRINT);
+    #else
+        _notify(TLS_NO_SSL);
+    #endif
+    }
 }
 
 void PangolinMQTT::setWill(const char* topic, uint8_t qos, bool retain, const char* payload) {
@@ -70,11 +81,6 @@ void PangolinMQTT::setWill(const char* topic, uint8_t qos, bool retain, const ch
   _willQos = qos;
   _willRetain = retain;
   _willPayload = payload;
-}
-
-void PangolinMQTT::serverFingerprint(const uint8_t* fingerprint) {
-    memcpy(_fingerprint, fingerprint, SHA1_SIZE);
-    PANGO::_secure=true;
 }
 
 void PangolinMQTT::_hpDespatch(mb m){ if(_cbMessage) _cbMessage(m.topic.c_str(), m.payload, m.plen, m.qos, m.retain, m.dup); }
@@ -92,6 +98,7 @@ void PangolinMQTT::_onDisconnect(int8_t r) {
 void PangolinMQTT::_notify(uint8_t e,int info){ 
     PANGO_PRINT1("NOTIFY e=%d inf=%d\n",e,info);
     if(_cbError) _cbError(e,info);
+    else Serial.printf("WTAF _notify ??? %d %d\n",e,info);
 }
 
 void PangolinMQTT::_handlePublish(mb m){
@@ -126,9 +133,9 @@ void PangolinMQTT::_handlePacket(mb m){
             if(i[1]) _notify(UNRECOVERABLE_CONNECT_FAIL,i[1]);
             else {
                 _connected=true;
-                PANGO::_space=PANGO::TCP->space();
-                PANGO_PRINT1("MSS=%d space=%d\n",PANGO::TCP->getMss(),PANGO::TCP->space());
-                PANGO_PRINT1("RX t/o=%d ACK t/o=%d\n",PANGO::TCP->getRxTimeout(),PANGO::TCP->getAckTimeout());
+                PANGO::_space=space();
+                PANGO_PRINT1("MSS=%d space=%d\n",getMss(),space());
+                PANGO_PRINT1("RX t/o=%d ACK t/o=%d\n",getRxTimeout(),getAckTimeout());
                 bool session=i[0] & 0x01;
                 Packet::_resendPartialTxns();
                 PANGO::_nPollTicks=PANGO::_nSrvTicks=0;
@@ -156,7 +163,7 @@ void PangolinMQTT::_handlePacket(mb m){
                 if(Packet::_inbound.count(id)) {
                     _hpDespatch(Packet::_inbound[id]);
                     Packet::_ACK(&Packet::_inbound,id,true); // true = inbound
-                } else PANGO::LIN->_notify(INBOUND_QOS_ACK_FAIL,id);
+                } else PANGO::TCP->_notify(INBOUND_QOS_ACK_FAIL,id);
                 PubcompPacket pcp(id); // pubrel
             }
             break;
@@ -249,7 +256,7 @@ void PangolinMQTT::_onData(uint8_t* data, size_t len) {
     do { p=_packetReassembler(mb(data+len-p,p)); } while (p < data + len);
 }
 
-void PangolinMQTT::_onPoll(AsyncClient* client) {
+void PangolinMQTT::_onPoll() {
     if(_connected){
         ++PANGO::_nPollTicks;
         ++PANGO::_nSrvTicks;
@@ -268,16 +275,17 @@ void PangolinMQTT::_onPoll(AsyncClient* client) {
     }
 }
 
-void PangolinMQTT::connect() {
+void PangolinMQTT::serverConnect() {
     if(!_connected){
-        if(_host=="" || _port==0) return _notify(NO_SERVER_DETAILS);
+        if(!_URL->host) return _notify(NO_SERVER_DETAILS);
         if(_clientId=="") _clientId=PANGO::_HAL_getUniqueId();
-        PANGO_PRINT1("CONNECTING to %s:%d as %s FH=%u session=%d\n",_host.c_str(),_port,_clientId.c_str(),PANGO::_HAL_getFreeHeap(),_cleanSession);
+        PANGO_PRINT1("CONNECTING to %s:%d as %s FH=%u session=%d\n",_URL->host,_URL->port,_clientId.c_str(),PANGO::_HAL_getFreeHeap(),_cleanSession);
         if(_cleanSession) _cleanStart();
         #if ASYNC_TCP_SSL_ENABLED
-            PANGO::TCP->connect(_host.c_str(), _port, true);
+            connect(_URL->host, _URL->port, !_URL->insecure);
         #else
-            PANGO::TCP->connect(_host.c_str(), _port);
+            if(_URL->insecure) connect(_URL->host, _URL->port);
+            else _notify(TLS_NO_SSL);
         #endif
     }
 }

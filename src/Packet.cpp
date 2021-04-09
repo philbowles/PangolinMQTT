@@ -32,7 +32,7 @@ void Packet::_ACK(PANGO_PACKET_MAP* m,uint16_t id,bool inout){ /// refakta?
     if(m->count(id)){
         ((*m)[id]).clear(); // THIS is where the memory leaks get mopped up!
         m->erase(id);
-    } else PANGO::LIN->_notify(inout ? INBOUND_QOS_ACK_FAIL:OUTBOUND_QOS_ACK_FAIL,id); //PANGO_PRINT("WHO TF IS %d???\n",id);
+    } else PANGO::TCP->_notify(inout ? INBOUND_QOS_ACK_FAIL:OUTBOUND_QOS_ACK_FAIL,id); //PANGO_PRINT("WHO TF IS %d???\n",id);
 }
 
 void Packet::_build(bool hold){
@@ -132,18 +132,20 @@ ConnectPacket::ConnectPacket(): Packet(CONNECT,10){
         if(PangolinMQTT::_cleanSession) protocol[7]|=CLEAN_SESSION;
         if(PangolinMQTT::_willRetain) protocol[7]|=WILL_RETAIN;
         if(PangolinMQTT::_willQos) protocol[7]|=(PangolinMQTT::_willQos==1) ? WILL_QOS1:WILL_QOS2;
-        uint8_t* pClientId=_stringblock(PANGO::LIN->_clientId);
+        uint8_t* pClientId=_stringblock(PANGO::TCP->_clientId);
         if(PangolinMQTT::_willTopic.size()){
             _stringblock(PangolinMQTT::_willTopic);
             _stringblock(PangolinMQTT::_willPayload);
             protocol[7]|=WILL;
         }
-        if(PangolinMQTT::_username.size()){
-            _stringblock(PangolinMQTT::_username);
+        if(PANGO::TCP->_username.size()){
+//            _stringblock(PangolinMQTT::_username);
+            _stringblock(PANGO::TCP->_username);
             protocol[7]|=USERNAME;
         }
-        if(PangolinMQTT::_password.size()){
-            _stringblock(PangolinMQTT::_password);
+        if(PANGO::TCP->_password.size()){
+//            _stringblock(PangolinMQTT::_password);
+            _stringblock(PANGO::TCP->_password);
             protocol[7]|=PASSWORD;
         }
     };
@@ -156,7 +158,7 @@ ConnectPacket::ConnectPacket(): Packet(CONNECT,10){
 
 PublishPacket::PublishPacket(const char* topic, uint8_t qos, bool retain, const uint8_t* payload, size_t length, bool dup,uint16_t givenId):
     _topic(topic),_qos(qos),_retain(retain),_length(length),_dup(dup),_givenId(givenId),Packet(PUBLISH) {
-        if(length < PANGO::LIN->getMaxPayloadSize()){
+        if(length < PANGO::TCP->getMaxPayloadSize()){
             _begin=[this]{ 
                 _stringblock(_topic.c_str());
                 _bs+=_length;
@@ -179,5 +181,5 @@ PublishPacket::PublishPacket(const char* topic, uint8_t qos, bool retain, const 
                 else if(_qos) _outbound[_id]=pub;
             };
             _build(_givenId);
-        } else PANGO::LIN->_notify(OUTBOUND_PUB_TOO_BIG,length);
+        } else PANGO::TCP->_notify(OUTBOUND_PUB_TOO_BIG,length);
 }

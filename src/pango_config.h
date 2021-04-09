@@ -22,8 +22,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-#define PANGO_VERSION "2.0.0"
-
+#define PANGO_VERSION "3.0.0"
+#include<async_config.h>
 /*
     Debug levels: 
     0 - No debug messages
@@ -33,10 +33,13 @@ SOFTWARE.
     4 - everything
 */
 
-#define PANGO_DEBUG 0
+#define PANGO_DEBUG 2
 
-#define ASYNC_TCP_SSL_ENABLED 0
+//#define ASYNC_TCP_SSL_ENABLED 0
 // Don't forget to edit also async_config.h in the PATCHED ESPAsyncTCP lib folder!!!
+
+#define PANGO_CHECK_FINGERPRINT 0
+// setting to zero will INSECURELY accept ANY site "at the other end" without confirmiung its fingerprint matches
 
 #define PANGO_POLL_RATE      2
 // per second - depend on LwIP implementation, may need to change as keepalive is scaled from this value

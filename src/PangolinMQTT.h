@@ -48,6 +48,8 @@ SOFTWARE.
 #error Platform not supported
 #endif
 
+#include<smartClient.h>
+
 #if PANGO_DEBUG
     template<int I, typename... Args>
     void PANGO_print(const char* fmt, Args... args) {
@@ -86,6 +88,9 @@ enum PANGO_FAILURE : uint8_t {
     MQTT_SERVER_UNAVAILABLE,
     UNRECOVERABLE_CONNECT_FAIL,
     TLS_BAD_FINGERPRINT,
+    TLS_NO_FINGERPRINT,
+    TLS_NO_SSL,
+    TLS_UNWANTED_FINGERPRINT,
     SUBSCRIBE_FAIL,
     INBOUND_QOS_ACK_FAIL,
     OUTBOUND_QOS_ACK_FAIL,
@@ -154,30 +159,28 @@ using PANGO_FN_U8PTRU8     = std::function<uint8_t*(uint8_t*)>;
 using PANGO_PACKET_MAP      =std::map<uint16_t,mb>; // indexed by messageId
 using PANGO_cbConnect       =std::function<void(bool)>;
 using PANGO_cbDisconnect    =std::function<void(int8_t)>;
-using PANGO_cbError         =std::function<void(uint8_t,int)>;
+using PANGO_cbError         =std::function<void(uint8_t,uint32_t)>;
 using PANGO_cbMessage       =std::function<void(const char* topic, const uint8_t* payload, size_t len,uint8_t qos,bool retain,bool dup)>;
 
 class Packet;
 class ConnectPacket;
 class PublishPacket;
 
-class PangolinMQTT {
+class PangolinMQTT: public smartClient {
         friend class Packet;
         friend class ConnectPacket;
         friend class PublishPacket;
         
                PANGO_cbConnect     _cbConnect=nullptr;
                PANGO_cbDisconnect  _cbDisconnect=nullptr;
-        static PANGO_cbError       _cbError;
+               PANGO_cbError       _cbError=nullptr;
                PANGO_cbMessage     _cbMessage=nullptr;
         static bool                _cleanSession;
                std::string         _clientId;
                uint8_t             _fingerprint[SHA1_SIZE];
-               std::string         _host;
         static uint16_t            _keepalive;
-        static std::string         _password;
-               uint16_t            _port;
-        static std::string         _username;
+               std::string         _password;
+               std::string         _username;
         static std::string         _willPayload;
         static uint8_t             _willQos;
         static bool                _willRetain;
@@ -191,22 +194,19 @@ class PangolinMQTT {
         inline void                _hpDespatch(mb);
                void                _onData(uint8_t* data, size_t len);
                void                _onDisconnect(int8_t r);
-               void                _onPoll(AsyncClient* client);
+               void                _onPoll();
                uint8_t*            _packetReassembler(mb);
     protected:
                 bool               connected(){ return _connected; }
     public:
-    
-        ~PangolinMQTT(){};
         PangolinMQTT();
-                void               connect();
                 void               disconnect(bool force = false);
                 const char*        getClientId(){ return _clientId.c_str(); }
                 size_t inline      getMaxPayloadSize(){ return (PANGO::_HAL_getFreeHeap() / 2) - PANGO_HEAP_SAFETY; }
-                void               onConnect(PANGO_cbConnect callback){ _cbConnect=callback; }
-                void               onDisconnect(PANGO_cbDisconnect callback){ _cbDisconnect=callback; }
-                void               onError(PANGO_cbError callback){ _cbError=callback; }
-                void               onMessage(PANGO_cbMessage callback){ _cbMessage=callback; }
+                void               onServerConnect(PANGO_cbConnect callback){ _cbConnect=callback; }
+                void               onServerDisconnect(PANGO_cbDisconnect callback){ _cbDisconnect=callback; }
+                void               onServerError(PANGO_cbError callback){ Serial.printf("CB ERROR SET!!!!\n"); _cbError=callback; }
+                void               onServerMessage(PANGO_cbMessage callback){ _cbMessage=callback; }
                 void               publish(const char* topic,const uint8_t* payload, size_t length, uint8_t qos=0,  bool retain=false);
                 void               publish(const char* topic,const char* payload, size_t length, uint8_t qos=0,  bool retain=false);
                 template<typename T>
@@ -215,6 +215,7 @@ class PangolinMQTT {
                     sprintf(buf,fmt,v);
                     publish(topic, reinterpret_cast<const uint8_t*>(buf), strlen(buf), qos, retain);
                 }
+                void               serverConnect();
 //              Coalesce templates when C++17 available (if constexpr (x))
                 void xPublish(const char* topic,const char* value, uint8_t qos=0,  bool retain=false) {
                     publish(topic,reinterpret_cast<const uint8_t*>(value),strlen(value),qos,retain);
@@ -239,27 +240,23 @@ class PangolinMQTT {
                     char* cp;
                     xPayload(payload,len,cp);
                     ss.assign(cp,strlen(cp));
-                    free(cp);
+                    ::free(cp);
                 }
                 void xPayload(const uint8_t* payload,size_t len,String& duino) {
                     char* cp;
                     xPayload(payload,len,cp);
                     duino+=cp;
-                    free(cp);
+                    ::free(cp);
                 }
-
                 template<typename T>
                 void xPayload(const uint8_t* payload,size_t len,T& value) {
                     if(len==sizeof(T)) memcpy(reinterpret_cast<T*>(&value),payload,sizeof(T));
                     else _notify(X_INVALID_LENGTH,len);
                 }
-//
-                void               serverFingerprint(const uint8_t* fingerprint);
                 void               setCleanSession(bool cleanSession){ _cleanSession = cleanSession; }
                 void               setClientId(const char* clientId){ _clientId = clientId; }
-                void               setCredentials(const char* username, const char* password = nullptr);
                 void               setKeepAlive(uint16_t keepAlive){ _keepalive = PANGO_POLL_RATE * keepAlive; }
-                void               setServer(const char* host, uint16_t port){ _host=host; _port=port; };
+                void               setServer(const char* url,const char* username="", const char* password = "",const uint8_t* fingerprint=nullptr);
                 void               setWill(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr);
                 void               subscribe(const char* topic, uint8_t qos);
                 void               unsubscribe(const char* topic);
