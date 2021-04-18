@@ -22,26 +22,17 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-#include"Packet.h"
+#include<PangolinMQTT.h>
+#include<Packet.h>
 
 uint16_t                            Packet::_nextId=1000;
-PANGO_PACKET_MAP                    Packet::_inbound;
-PANGO_PACKET_MAP                    Packet::_outbound;
-
-void Packet::_ACK(PANGO_PACKET_MAP* m,uint16_t id,bool inout){ /// refakta?
-    if(m->count(id)){
-        ((*m)[id]).clear(); // THIS is where the memory leaks get mopped up!
-        m->erase(id);
-    } else PANGO::TCP->_notify(inout ? INBOUND_QOS_ACK_FAIL:OUTBOUND_QOS_ACK_FAIL,id); //PANGO_PRINT("WHO TF IS %d???\n",id);
-}
 
 void Packet::_build(bool hold){
-    mb m{}; // empty message block
+    uint8_t* virgin;
     _begin();
-    uint32_t sx=_bs+_hdrAdjust;
-    if(_hasId) sx+=2;
+    if(_hasId) _bs+=2;
     // calc rl
-    uint32_t X=sx;
+    uint32_t X=_bs;
     std::vector<uint8_t> rl;
     uint8_t encodedByte;
     do{
@@ -50,59 +41,56 @@ void Packet::_build(bool hold){
         if ( X > 0 ) encodedByte = encodedByte | 128;
         rl.push_back(encodedByte);
     } while ( X > 0 );
-    sx+=1+rl.size();
-    
-    ADFP snd_buf=m.data=(static_cast<ADFP>(malloc(sx))); // Not a memleak - will be free'd when TCP ACKs it.
+
+    _bs+=1+rl.size();
+    ADFP snd_buf=virgin=(static_cast<ADFP>(malloc(_bs))); // Not a memleak - will be free'd when TCP ACKs it.
     
     *snd_buf++=_controlcode;
     for(auto const& r:rl) *snd_buf++=r;
     if(_hasId) snd_buf=_poke16(snd_buf,_id);
     snd_buf=_middle(snd_buf);
     while(!_blox.empty()){
-        uint16_t n=_blox.front().first;
-        uint8_t* p=_blox.front().second;
+        mbx tmp=_blox.front();
+        uint16_t n=tmp.len;
+        uint8_t* p=tmp.data;
         snd_buf=_poke16(snd_buf,n);
         memcpy(snd_buf,p,n);
         snd_buf+=n;
-        free(p);
+        tmp.clear();
         _blox.pop();
     }
-    _end(snd_buf,&m);
-    // the pointer in m.data MUST NOT BE FREED YET!
-    // The class instance will go out of scope, its temp blocks are freed, but its built data MUST live on until ACK
-    // populate fields from newly constructed bare mb
-    if(!hold) PANGO::_txPacket(mb (m.data,true));
-}
-
-void Packet::_resendPartialTxns(){
-    std::vector<uint16_t> morituri;
-    for(auto const& o:_outbound){
-        auto m=o.second;
-        if(--(m.retries)){
-            if(m.pubrec){
-                PANGO_PRINT4("WE ARE PUBREC'D ATTEMPT @ QOS2: SEND %d PUBREL\n",m.id);
-                PubrelPacket prp(m.id);
-            }
-            else {
-                PANGO_PRINT4("SET DUP & RESEND %s %d\n",m.id,PANGO::getPktName(m.data[0]));
-                m.data[0]|=0x08; // set dup & resend
-                PANGO::_txPacket(m);
-            }
-        }
-        else {
-            PANGO_PRINT4("NO JOY AFTER %d ATTEMPTS: QOS FAIL\n",PANGO::_maxRetries);
-            morituri.push_back(m.id); // all hope exhausted TODO: reconnect?
-        }
-    }
-    for(auto const& i:morituri) _ACKoutbound(i);
+    _end(snd_buf,virgin);
+    PANGO_DUMP4(virgin,_bs);
+    if(!hold) _txPacket(mbx(virgin,_bs,true));
 }
 
 void Packet::_idGarbage(uint16_t id){
-    ADFP p=static_cast<uint8_t*>(malloc(4));
-    p[0]=_controlcode;
-    p[1]=2;
-    _poke16(&p[2],id);
-    PANGO::_txPacket(mb(p,true));
+    uint8_t  G[]={_controlcode,2,(id & 0xff00) >> 8,id & 0xff};
+    _txPacket(mbx(G,4,true));
+}
+
+void Packet::_multiTopic(std::initializer_list<const char*> topix,uint8_t qos){
+    static vector<string> topics;
+    _id=++_nextId;
+    _begin=[=]{
+        for(auto &t:topix){
+            topics.push_back(t);
+            _bs+=(_controlcode==0x82 ? 3:2)+strlen(t);
+        }
+    };
+    _middle=[=](uint8_t* p){
+        for(auto const& t:topics){
+            size_t n=t.size();
+            p=_poke16(p,n);
+            memcpy(p,t.data(),n);
+            p+=n;
+            if(_controlcode==0x82) *p++=qos;
+        }
+        return p;
+    };
+    _build();
+    topics.clear();
+    topics.shrink_to_fit();
 }
 
 uint8_t* Packet::_poke16(uint8_t* p,uint16_t u){
@@ -112,53 +100,47 @@ uint8_t* Packet::_poke16(uint8_t* p,uint16_t u){
 }
 
 void Packet::_shortGarbage(){
-    uint8_t* p=static_cast<uint8_t*>(malloc(2));
-    p[0]=_controlcode;
-    p[1]=_controlcode=0;
-    PANGO::_txPacket(mb(p,true));
+    uint8_t  G[]={_controlcode,0};
+    _txPacket(mbx(G,2,true));
 }
 
-uint8_t* Packet::_stringblock(const std::string& s){ 
+void Packet::_stringblock(const std::string& s){ 
     size_t sz=s.size();
     _bs+=sz+2;
-    uint8_t* p=static_cast<uint8_t*>(malloc(sz));
-    _blox.push(std::make_pair(sz,p));
-    memcpy(p,s.data(),sz);
-    return p;
+    _blox.push(mbx((uint8_t*) s.data(),sz,true));
 }
 
-ConnectPacket::ConnectPacket(): Packet(CONNECT,10){
-    _begin=[this]{
-        if(PangolinMQTT::_cleanSession) protocol[7]|=CLEAN_SESSION;
-        if(PangolinMQTT::_willRetain) protocol[7]|=WILL_RETAIN;
-        if(PangolinMQTT::_willQos) protocol[7]|=(PangolinMQTT::_willQos==1) ? WILL_QOS1:WILL_QOS2;
-        uint8_t* pClientId=_stringblock(PANGO::TCP->_clientId);
-        if(PangolinMQTT::_willTopic.size()){
-            _stringblock(PangolinMQTT::_willTopic);
-            _stringblock(PangolinMQTT::_willPayload);
+ConnectPacket::ConnectPacket(): Packet(CONNECT){
+    _bs=10;
+    _begin=[=]{
+        if(PANGOV3->_cleanSession) protocol[7]|=CLEAN_SESSION;
+        if(PANGOV3->_willRetain) protocol[7]|=WILL_RETAIN;
+        if(PANGOV3->_willQos) protocol[7]|=(PANGOV3->_willQos==1) ? WILL_QOS1:WILL_QOS2;
+        _stringblock(PANGOV3->_clientId);
+        if(PANGOV3->_willTopic.size()){
+            _stringblock(PANGOV3->_willTopic);
+            _stringblock(PANGOV3->_willPayload);
             protocol[7]|=WILL;
         }
-        if(PANGO::TCP->_username.size()){
-//            _stringblock(PangolinMQTT::_username);
-            _stringblock(PANGO::TCP->_username);
+        if(PANGOV3->_username.size()){
+            _stringblock(PANGOV3->_username);
             protocol[7]|=USERNAME;
         }
-        if(PANGO::TCP->_password.size()){
-//            _stringblock(PangolinMQTT::_password);
-            _stringblock(PANGO::TCP->_password);
+        if(PANGOV3->_password.size()){
+            _stringblock(PANGOV3->_password);
             protocol[7]|=PASSWORD;
         }
     };
-    _middle=[this](uint8_t* p){
+    _middle=[=](uint8_t* p){
         memcpy(p,&protocol,8);p+=8;
-        return _poke16(p,PangolinMQTT::_keepalive);
+        return _poke16(p,PANGOV3->_keepalive);
     };
     _build();
 }
 
 PublishPacket::PublishPacket(const char* topic, uint8_t qos, bool retain, const uint8_t* payload, size_t length, bool dup,uint16_t givenId):
     _topic(topic),_qos(qos),_retain(retain),_length(length),_dup(dup),_givenId(givenId),Packet(PUBLISH) {
-        if(length < PANGO::TCP->getMaxPayloadSize()){
+        if(length < PANGOV3->getMaxPayloadSize()){
             _begin=[this]{ 
                 _stringblock(_topic.c_str());
                 _bs+=_length;
@@ -172,14 +154,16 @@ PublishPacket::PublishPacket(const char* topic, uint8_t qos, bool retain, const 
                 }
                 _controlcode|=flags;
             };
-            _end=[this,payload](uint8_t* p,mb* base){ 
+
+            _end=[this,payload](uint8_t* p,uint8_t* base){ 
                 uint8_t* p2=_qos ? _poke16(p,_id):p;
                 memcpy(p2,payload,_length);
-                base->qos=_qos;
-                mb pub(base->data,true); // make it a proper pub-populated msgblok
-                if(_givenId) _inbound[_id]=pub;
-                else if(_qos) _outbound[_id]=pub;
+//                dumphex(base,_bs);
+                mqttTraits T(base,_bs);
+                if(_givenId) PangolinMQTT::_inbound[_id]=T;
+                else if(_qos) PangolinMQTT::_outbound[_id]=T;
+                
             };
             _build(_givenId);
-        } else PANGO::TCP->_notify(OUTBOUND_PUB_TOO_BIG,length);
+        } else PANGOV3->_notify(OUTBOUND_PUB_TOO_BIG,length);
 }

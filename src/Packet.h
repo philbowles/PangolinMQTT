@@ -24,7 +24,8 @@ SOFTWARE.
 */
 #pragma once
 #include <PangolinMQTT.h>
-
+#include <mqTraits.h>
+/*
 enum PANGO_MQTT_CNX_FLAG : uint8_t {
     USERNAME      = 0x80,
     PASSWORD      = 0x40,
@@ -34,39 +35,42 @@ enum PANGO_MQTT_CNX_FLAG : uint8_t {
     WILL          = 0x04,
     CLEAN_SESSION = 0x02
 };
-
-using PANGO_BLOCK          = std::pair<size_t,uint8_t*>; // small sized ptr used internally by Packet class
-using PANGO_BLOCK_Q        = std::queue<PANGO_BLOCK>;
+*/
+using PANGO_BLOCK_Q        = std::queue<mbx>;
 
 class Packet {
     friend class PangolinMQTT;
     protected:
         static  uint16_t         _nextId;
                 uint16_t         _id=0; 
-                uint8_t          _hdrAdjust;
                 bool             _hasId=false;
                 uint8_t          _controlcode;
                 PANGO_BLOCK_Q    _blox;
                 uint32_t         _bs=0;
                 PANGO_FN_VOID    _begin=[]{};
                 PANGO_FN_U8PTRU8 _middle=[](uint8_t* p){ return p; };
-                PANGO_FN_U8PTR   _end=[](uint8_t* p,mb* base){};
+                PANGO_FN_U8PTR   _end=[](uint8_t* p,uint8_t* base){};
 
-        static  void             _ACK(PANGO_PACKET_MAP* m,uint16_t id,bool inout); // inout true=INBOUND false=OUTBOUND
-        static  void             _ACKoutbound(uint16_t id){ _ACK(&_outbound,id,false); }
                 void	         _build(bool hold=false);
-        static  void             _resendPartialTxns();
                 void             _idGarbage(uint16_t id);
                 void             _initId();
+                void             _multiTopic(std::initializer_list<const char*> topix,uint8_t qos=0);
                 uint8_t*         _poke16(uint8_t* p,uint16_t u);
                 void             _shortGarbage();
-                uint8_t*         _stringblock(const std::string& s);
-            
+                void             _stringblock(const std::string& s);
+        static  void             _txPacket(mbx m){
+            mqttTraits  traits(m.data,m.len);
+            PANGO_PRINT4("TX ----> MBX %s 0x%08x len=%d\n",traits.getPktName().data(),m.data,m.len);
+            PANGOV3->txdata(m); 
+        }
+        /*
+        static  void             _txPacket(mqttTraits m){
+            PANGO_PRINT4("TX ----> TRT %s 0x%08x len=%d\n",m.getPktName().data(),m.data,m.len);
+            PANGOV3->txdata(m); 
+        }
+        */
     public:
-        static  PANGO_PACKET_MAP  _outbound;
-        static  PANGO_PACKET_MAP  _inbound;
-
-        Packet(uint8_t controlcode,uint8_t adj=0,bool hasid=false): _controlcode(controlcode),_hdrAdjust(adj),_hasId(hasid){}
+        Packet(uint8_t controlcode,bool hasid=false): _controlcode(controlcode),_hasId(hasid){}
 };
 class ConnectPacket: public Packet {
             uint8_t  protocol[8]={0x0,0x4,'M','Q','T','T',4,0}; // 3.1.1
@@ -98,24 +102,15 @@ class PubcompPacket: public Packet {
         PubcompPacket(uint16_t id): Packet(PUBCOMP) { _idGarbage(id); }  
 };
 class SubscribePacket: public Packet {
-        std::string     _topic;
     public:
-        uint8_t         _qos;
-        SubscribePacket(const std::string& topic,uint8_t qos): _topic(topic),_qos(qos),Packet(SUBSCRIBE,1,true) {
-            _id=++_nextId;
-            _begin=[this]{ _stringblock(_topic.c_str()); };
-            _end=[this](uint8_t* p,mb* base){ *p=_qos; };
-            _build();
-        }
+        SubscribePacket(const std::string& topic,uint8_t qos): Packet(SUBSCRIBE,true) { _multiTopic({topic.data()},qos); }
+        SubscribePacket(std::initializer_list<const char*> topix,uint8_t qos): Packet(SUBSCRIBE,true) { _multiTopic(topix,qos); }
 };
+
 class UnsubscribePacket: public Packet {
-        std::string     _topic;
     public:
-        UnsubscribePacket(const std::string& topic): _topic(topic),Packet(UNSUBSCRIBE,0,true) {
-            _id=++_nextId;
-            _begin=[this]{ _stringblock(_topic.c_str()); };
-            _build();
-        }
+        UnsubscribePacket(const std::string& topic): Packet(UNSUBSCRIBE,true) { _multiTopic({topic.data()}); }
+        UnsubscribePacket(std::initializer_list<const char*> topix): Packet(UNSUBSCRIBE,true) { _multiTopic(topix); }
 };
 
 class PublishPacket: public Packet {

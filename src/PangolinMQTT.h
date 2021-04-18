@@ -27,61 +27,25 @@ SOFTWARE.
 #include"pango_config.h"
 
 #include<Arduino.h>
+
 #include<functional>
 #include<string>
 #include<map>
 #include<queue>
 
-#define SHA1_SIZE 0
-
 #ifdef ARDUINO_ARCH_ESP32
-#include <AsyncTCP.h> /// no tls yet
-#elif defined(ARDUINO_ARCH_ESP8266)
-#include <ESPAsyncTCP.h>
+    #include <AsyncTCP.h> /// no tls yet
+#else
+    #include <ESPAsyncTCP.h>
     #if ASYNC_TCP_SSL_ENABLED
         #include <tcp_axtls.h>
-        #define SHA1_SIZE 20
     #endif
-#elif defined(ARDUINO_ARCH_STM32)
-#include <STM32AsyncTCP.h>
-#else
-#error Platform not supported
 #endif
 
-#include<smartClient.h>
+const char*_HAL_getUniqueId();
 
-#if PANGO_DEBUG
-    template<int I, typename... Args>
-    void PANGO_print(const char* fmt, Args... args) {
-        if (PANGO_DEBUG >= I) Serial.printf(std::string(std::string("D:%d: ")+fmt).c_str(),I,args...);
-    }
-  #define PANGO_PRINT1(...) PANGO_print<1>(__VA_ARGS__)
-  #define PANGO_PRINT2(...) PANGO_print<2>(__VA_ARGS__)
-  #define PANGO_PRINT3(...) PANGO_print<3>(__VA_ARGS__)
-  #define PANGO_PRINT4(...) PANGO_print<4>(__VA_ARGS__)
-#else
-  #define PANGO_PRINT1(...)
-  #define PANGO_PRINT2(...)
-  #define PANGO_PRINT3(...)
-  #define PANGO_PRINT4(...)
-#endif
-
-enum :uint8_t {
-    CONNECT     = 0x10, // x
-    CONNACK     = 0x20, // x
-    PUBLISH     = 0x30, // x
-    PUBACK      = 0x40, // x
-    PUBREC      = 0x50, 
-    PUBREL      = 0x62,
-    PUBCOMP     = 0x70,
-    SUBSCRIBE   = 0x82, // x
-    SUBACK      = 0x90, // x
-    UNSUBSCRIBE = 0xa2, // x
-    UNSUBACK    = 0xb0, // x
-    PINGREQ     = 0xc0, // x
-    PINGRESP    = 0xd0, // x
-    DISCONNECT  = 0xe0
-};
+#include<AardvarkTCP.h>
+#include<AardvarkUtils.h>
 
 enum PANGO_FAILURE : uint8_t {
     TCP_DISCONNECTED,
@@ -101,7 +65,9 @@ enum PANGO_FAILURE : uint8_t {
     NO_SERVER_DETAILS
 };
 
-#include"PANGO.h" // common namespace
+    extern char*            getPktName(uint8_t type);
+
+//#include"PANGO.h" // common namespace
 //  "Pangolin" has what some (uninformed) folk might call "unorthodox" memory management. 
 //  It contains a lot of code that LOOKS like it will leak memory. For those uninformed folk, 
 //  (including the authors of other so-called MQTT libraries): "standard" techniques simply don't work 
@@ -145,18 +111,19 @@ enum PANGO_FAILURE : uint8_t {
 //  access to important fields e.g. Qos, "remaining length" which would otherwise need to be derived or
 //  recalculated every time
 //
-//  class mb = "message block": Basically a fancy struct: ALWAYS contained by copy, don't ever hold ptr to an mb
+//  class mq = "message block": Basically a fancy struct: ALWAYS contained by copy, don't ever hold ptr to an mqm
 //
-using PANGO_DELAYED_FREE   = uint8_t*;
-using ADFP                 = PANGO_DELAYED_FREE; // SOOO much less typing - PANGO "delayed free" pointer
+//using PANGO_DELAYED_FREE   = uint8_t*;
+//using ADFP                 = PANGO_DELAYED_FREE; // SOOO much less typing - PANGO "delayed free" pointer
+
+#include<mbx.h>
+#include<mqTraits.h>
 
 using PANGO_FN_VOID        = std::function<void(void)>;
-using PANGO_FN_U8PTR       = std::function<void(uint8_t*,mb* base)>;
+using PANGO_FN_U8PTR       = std::function<void(uint8_t*,uint8_t* base)>;
 using PANGO_FN_U8PTRU8     = std::function<uint8_t*(uint8_t*)>;
 
-#include"mb.h"
-
-using PANGO_PACKET_MAP      =std::map<uint16_t,mb>; // indexed by messageId
+using PANGO_PACKET_MAP      =std::map<uint16_t,mqttTraits>; // indexed by messageId
 using PANGO_cbConnect       =std::function<void(bool)>;
 using PANGO_cbDisconnect    =std::function<void(int8_t)>;
 using PANGO_cbError         =std::function<void(uint8_t,uint32_t)>;
@@ -166,47 +133,61 @@ class Packet;
 class ConnectPacket;
 class PublishPacket;
 
-class PangolinMQTT: public smartClient {
+class PangolinMQTT: public AardvarkTCP {
         friend class Packet;
         friend class ConnectPacket;
         friend class PublishPacket;
-        
+
                PANGO_cbConnect     _cbConnect=nullptr;
                PANGO_cbDisconnect  _cbDisconnect=nullptr;
                PANGO_cbError       _cbError=nullptr;
                PANGO_cbMessage     _cbMessage=nullptr;
-        static bool                _cleanSession;
+               bool                _cleanSession=true;
                std::string         _clientId;
-               uint8_t             _fingerprint[SHA1_SIZE];
-        static uint16_t            _keepalive;
-               std::string         _password;
-               std::string         _username;
-        static std::string         _willPayload;
-        static uint8_t             _willQos;
-        static bool                _willRetain;
-        static std::string         _willTopic;
                bool                _connected=false;
+               uint16_t            _keepalive=15 * PANGO_POLL_RATE;
+               std::string         _password;
+        static PANGO_PACKET_MAP    _inbound;
+        static uint32_t            _nPollTicks;
+        static uint32_t            _nSrvTicks;
+        static PANGO_PACKET_MAP    _outbound;
+               std::string         _username;
+               std::string         _willPayload;
+               uint8_t             _willQos;
+               bool                _willRetain;
+               std::string         _willTopic;
+               
+               void                _ACK(PANGO_PACKET_MAP* m,uint16_t id,bool inout); // inout true=INBOUND false=OUTBOUND
+               void                _ACKoutbound(uint16_t id){ _ACK(&_outbound,id,false); }
 
                void                _cleanStart();
+               void                _clearQQ(PANGO_PACKET_MAP* m);
                void                _destroyClient();
-               void                _handlePacket(mb);
-               void                _handlePublish(mb);
-        inline void                _hpDespatch(mb);
-               void                _onData(uint8_t* data, size_t len);
+               void                _handlePacket(uint8_t* data, size_t len);
+               void                _handlePublish(mqttTraits T);
+        inline void                _hpDespatch(mqttTraits T);
+        inline void                _hpDespatch(uint16_t id);
                void                _onDisconnect(int8_t r);
                void                _onPoll();
-               uint8_t*            _packetReassembler(mb);
-    protected:
-                bool               connected(){ return _connected; }
+               void                _resendPartialTxns();
     public:
         PangolinMQTT();
-                void               disconnect(bool force = false);
-                const char*        getClientId(){ return _clientId.c_str(); }
-                size_t inline      getMaxPayloadSize(){ return (PANGO::_HAL_getFreeHeap() / 2) - PANGO_HEAP_SAFETY; }
-                void               onServerConnect(PANGO_cbConnect callback){ _cbConnect=callback; }
-                void               onServerDisconnect(PANGO_cbDisconnect callback){ _cbDisconnect=callback; }
-                void               onServerError(PANGO_cbError callback){ Serial.printf("CB ERROR SET!!!!\n"); _cbError=callback; }
-                void               onServerMessage(PANGO_cbMessage callback){ _cbMessage=callback; }
+                void               connect(const char* clientId="",bool session=true){ 
+                        _cleanSession = session;
+                        _clientId = clientId;
+                        TCPconnect();
+                }
+                void               disconnect();
+                const char*        getClientId(){ return _clientId.data(); }
+                size_t inline      getMaxPayloadSize(){ return (_HAL_getFreeHeap() / 2) - PANGO_HEAP_SAFETY; }
+
+                bool               mqttConnected(){ return _connected; }
+
+                void               onMqttConnect(PANGO_cbConnect callback){ _cbConnect=callback; }
+                void               onMqttDisconnect(PANGO_cbDisconnect callback){ _cbDisconnect=callback; }
+                void               onMqttError(PANGO_cbError callback){ _cbError=callback; }
+                void               onMqttMessage(PANGO_cbMessage callback){ _cbMessage=callback; }
+                
                 void               publish(const char* topic,const uint8_t* payload, size_t length, uint8_t qos=0,  bool retain=false);
                 void               publish(const char* topic,const char* payload, size_t length, uint8_t qos=0,  bool retain=false);
                 template<typename T>
@@ -215,7 +196,6 @@ class PangolinMQTT: public smartClient {
                     sprintf(buf,fmt,v);
                     publish(topic, reinterpret_cast<const uint8_t*>(buf), strlen(buf), qos, retain);
                 }
-                void               serverConnect();
 //              Coalesce templates when C++17 available (if constexpr (x))
                 void xPublish(const char* topic,const char* value, uint8_t qos=0,  bool retain=false) {
                     publish(topic,reinterpret_cast<const uint8_t*>(value),strlen(value),qos,retain);
@@ -253,15 +233,20 @@ class PangolinMQTT: public smartClient {
                     if(len==sizeof(T)) memcpy(reinterpret_cast<T*>(&value),payload,sizeof(T));
                     else _notify(X_INVALID_LENGTH,len);
                 }
-                void               setCleanSession(bool cleanSession){ _cleanSession = cleanSession; }
-                void               setClientId(const char* clientId){ _clientId = clientId; }
                 void               setKeepAlive(uint16_t keepAlive){ _keepalive = PANGO_POLL_RATE * keepAlive; }
                 void               setServer(const char* url,const char* username="", const char* password = "",const uint8_t* fingerprint=nullptr);
                 void               setWill(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr);
                 void               subscribe(const char* topic, uint8_t qos);
+                void               subscribe(std::initializer_list<const char*> topix, uint8_t qos);
                 void               unsubscribe(const char* topic);
+                void               unsubscribe(std::initializer_list<const char*> topix);
 //
 //              DO NOT CALL ANY FUNCTION STARTING WITH UNDERSCORE!!! _
 //
                 void               _notify(uint8_t e,int info=0);
+#if PANGO_DEBUG
+                void               dump(); // null if no debug
+#endif
 };
+
+extern PangolinMQTT*        PANGOV3;
