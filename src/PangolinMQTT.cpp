@@ -29,32 +29,24 @@ SOFTWARE.
 PANGO_PACKET_MAP        PangolinMQTT::_inbound;
 PANGO_PACKET_MAP        PangolinMQTT::_outbound;
 
-#ifdef ARDUINO_ARCH_ESP32
-    const char* _HAL_getUniqueId(){
-        static char buf[19];
-        sprintf(buf, "esp32-%12llX", ESP.getEfuseMac());
-        return buf;
-    }
-#else
-    const char*_HAL_getUniqueId(){
-        static char buf[15];
-        sprintf(buf, "esp8266-%06X", ESP.getChipId());
-        return buf;
-    }
-#endif
-
 PangolinMQTT*       PANGOV3;
-
-uint32_t            PangolinMQTT::_nPollTicks;
-uint32_t            PangolinMQTT::_nSrvTicks;
 
 PangolinMQTT::PangolinMQTT(): AardvarkTCP(){
     PANGOV3=this;
     setNoDelay(true);
 
     onTCPconnect([=](){ if(!_connected) ConnectPacket cp{}; });
-    onTCPdisconnect([=](int8 r){ PANGO_PRINT1("TCP CHOPPED US! %d\n",r); _onDisconnect(TCP_DISCONNECTED); });
-    onTCPerror([=](int error,int info){ PANGO_PRINT1("TCP_ERROR %d info=%d\n",error,info); _onDisconnect(error); });
+    onTCPdisconnect([=](int r){ PANGO_PRINT1("TCP CHOPPED US! %d\n",r); _onDisconnect(TCP_DISCONNECTED); });
+    onTCPerror([=](int error,int info){
+        if(error < 1){
+            PANGO_PRINT1("TCP_ERROR %d info=%d FORCE DISCONNECT\n",error,info); 
+            disconnect();
+        }
+        else {
+            PANGO_PRINT1("AARDVARK_ERROR %d info=%d\n",error,info);
+            _notify(AARDVARK_NON_TCP_ERROR,error);
+        } 
+    });
     onTCPpoll([=]{ _onPoll(); });
 
     rx([=](const uint8_t* data,size_t len){ _handlePacket((uint8_t*) data,len); });
@@ -75,12 +67,9 @@ void PangolinMQTT::setWill(const char* topic, uint8_t qos, bool retain, const ch
 
 void PangolinMQTT::_ACK(PANGO_PACKET_MAP* m,uint16_t id,bool inout){ /// refakta?
     if(m->count(id)){
-        ADFP data=((*m)[id]).data;
-        Serial.printf("ACK %sBOUND id=0x%08x\n",inout ? "IN":"OUT",data);
-        dumphex(data,((*m)[id]).len);
+        uint8_t* data=((*m)[id]).data;
         mbx::clear(data);
         m->erase(id);
-        dump();
     } else _notify(inout ? INBOUND_QOS_ACK_FAIL:OUTBOUND_QOS_ACK_FAIL,id); //PANGO_PRINT("WHO TF IS %d???\n",id);
 }
 
@@ -89,11 +78,6 @@ void PangolinMQTT::_cleanStart(){
     _clearQQ(&_inbound);
     PANGO_PRINT4("_cleanStart clrQQ outbound\n");
     _clearQQ(&_outbound);
-//  sanity checks
-    if(mbx::pool.size()){
-        Serial.printf("AAAAAAAAARGH! %d ORPHANED MBX!!!\n",mbx::pool.size());
-        mbx::dump();
-    }
     Packet::_nextId=1000; // SO much easier to differentiate client vs server IDs in Wireshark log :)
 }
 
@@ -102,18 +86,43 @@ void PangolinMQTT::_clearQQ(PANGO_PACKET_MAP* m){
     m->clear();
 }
 
-void PangolinMQTT::_hpDespatch(mqttTraits P){ if(_cbMessage) _cbMessage(P.topic.data(), P.payload, P.plen, P.qos, P.retain, P.dup); }
+void PangolinMQTT::_hpDespatch(mqttTraits P){ 
+    if(_cbMessage) {
+        if(P.topic=="pango"){
+            PANGO_PRINT1("PANGO INTERCEPTED\n");
+            string pl((const char*) P.payload,P.plen);
+            if(pl=="mem"){
+                Serial.printf("FH: %u\nMB: %u\nFR: %u\nMP: %d\n",ESP.getFreeHeap(),_HAL_maxHeapBlock(),ESP.getHeapFragmentation(),getMaxPayloadSize());
+            } 
+            else if(pl=="info"){ 
+                Serial.printf("AARD  Vn: %s\n",AARDVARK_VERSION);
+                Serial.printf("CHECK FP: %d\n",VARK_CHECK_FINGERPRINT);
+                Serial.printf("SAFEHEAP: %d\n",VARK_HEAP_SAFETY);
+                Serial.printf("PANGO Vn: %s\n",PANGO_VERSION);
+                Serial.printf("POLLRATE: %d\n",PANGO_POLL_RATE);
+                Serial.printf("NRETRIES: %d\n",PANGO_MAX_RETRIES);
 
-void PangolinMQTT::_hpDespatch(uint16_t id){ 
-    Serial.printf("HPID\n");
-    dump();
-    _hpDespatch(_inbound[id]);
+                Serial.printf("session : %s\n",_cleanSession ? "clean":"dirty");
+                Serial.printf("clientID: %s\n",_clientId.data());
+                Serial.printf("keepaliv: %d => %ds\n",_keepalive,_keepalive/PANGO_POLL_RATE);
+                Serial.printf("poll Tix: %d\n",_nPollTicks);
+                Serial.printf("srv  Tix: %d\n",_nSrvTicks);
+            }
+#if PANGO_DEBUG
+            else if(pl=="dump"){ dump(); }
+#endif
+        }
+    else _cbMessage(P.topic.data(), P.payload, P.plen, P.qos, P.retain, P.dup);
+    }
 }
+
+void PangolinMQTT::_hpDespatch(uint16_t id){ _hpDespatch(_inbound[id]); }
 
 void PangolinMQTT::_handlePacket(uint8_t* data, size_t len){
     _nSrvTicks=0;
-    mqttTraits traits(data,len);
+    if(data[0]==PINGRESP || data[0]==UNSUBACK) return; // early bath
 
+    mqttTraits traits(data,len);
     auto i=traits.start();
     uint16_t id=traits.id;
 
@@ -125,13 +134,13 @@ void PangolinMQTT::_handlePacket(uint8_t* data, size_t len){
                 bool session=i[0] & 0x01;
                 _resendPartialTxns();
                 _nPollTicks=_nSrvTicks=0;
-                PANGO_PRINT1("CONNECTED FH=%u MaxPL=%u SESSION %s\n",_HAL_getFreeHeap(),getMaxPayloadSize(),session ? "DIRTY":"CLEAN");
+                PANGO_PRINT1("CONNECTED FH=%u MaxPL=%u SESSION %s\n",_HAL_maxHeapBlock(),getMaxPayloadSize(),session ? "DIRTY":"CLEAN");
+//#if PANGO_DEBUG
+                SubscribePacket pango("pango",0); // internal info during beta...will be moved back inside debug #ifdef
+//#endif
                 if(_cbConnect) _cbConnect(session);
             }
             break;
-        case PINGRESP:
-        case UNSUBACK:
-           break;
         case SUBACK:
             if(i[2] & 0x80) _notify(SUBSCRIBE_FAIL,id);
             break;
@@ -150,7 +159,7 @@ void PangolinMQTT::_handlePacket(uint8_t* data, size_t len){
                 if(_inbound.count(id)) {
                     _hpDespatch(_inbound[id]);
                     _ACK(&_inbound,id,true); // true = inbound
-                } else PANGOV3->_notify(INBOUND_QOS_ACK_FAIL,id);
+                } else _notify(INBOUND_QOS_ACK_FAIL,id);
                 PubcompPacket pcp(id); // pubrel
             }
             break;
@@ -194,26 +203,21 @@ void PangolinMQTT::_notify(uint8_t e,int info){
 }
 
 void PangolinMQTT::_onDisconnect(int8_t r) {
-    #if PANGO_DEBUG > 0 
-    PANGO_PRINT1("ON DISCONNECT FH=%u r=%d\n",_HAL_getFreeHeap(),r); 
-    #endif
     _connected=false;
     if(_cbDisconnect) _cbDisconnect(r);
 }
 
 void PangolinMQTT::_onPoll() {
+    static uint8_t  G[]={PINGREQ,0};
     if(_connected){
         ++_nPollTicks;
         ++_nSrvTicks;
 
-        if(_nSrvTicks > ((_keepalive * 3) / 2)) { // safe headroom
-            PANGO_PRINT1("T=%u SRV GONE? ka=%d Stix=%d\n",millis(),_keepalive,_nSrvTicks);
-            _onDisconnect(MQTT_SERVER_UNAVAILABLE);
-        }
+        if(_nSrvTicks > ((_keepalive * 3) / 2)) _onDisconnect(MQTT_SERVER_UNAVAILABLE);
         else {
             if(_nPollTicks > _keepalive){
 //                _resendPartialTxns();
-                PingPacket pp{};
+                txdata(G,2,false); // static ping
                 _nPollTicks=0;
             }
         }
@@ -246,9 +250,16 @@ void PangolinMQTT::_resendPartialTxns(){
 //
 //      PUBLIC
 //
-void PangolinMQTT::disconnect() {   
+void PangolinMQTT::connect(std::string clientId,bool session){ 
+    _cleanSession = session;
+    _clientId = clientId.size() ? clientId:_HAL_uniqueName();
+    TCPconnect();
+}
+
+void PangolinMQTT::disconnect() {
+    static uint8_t  G[]={DISCONNECT,0};
     PANGO_PRINT1("USER DCX\n");
-    if(_connected) DisconnectPacket dp{};
+    if(_connected) txdata(G,2,false); // static disconnect
     else _notify(TCP_DISCONNECTED);
 }
 
@@ -284,12 +295,8 @@ void PangolinMQTT::unsubscribe(std::initializer_list<const char*> topix) {
 //
 //
 #if PANGO_DEBUG
-void PangolinMQTT::dump(){ 
-    PANGO_PRINT4("DUMP ALL %d POOL BLOX (1st 64)\n",mbx::pool.size());
-    for(auto & p:mbx::pool) {
-        PANGO_PRINT4("%08X\n",p);
-        PANGO_DUMP4(p,64);
-    }
+void PangolinMQTT::dump(){
+    AardvarkTCP::dump();
 
     PANGO_PRINT4("DUMP ALL %d PACKETS OUTBOUND\n",_outbound.size());
     for(auto & p:_outbound) p.second.dump();

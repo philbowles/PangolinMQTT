@@ -1,6 +1,5 @@
-#include"pango_config.h"
 #include<mqTraits.h>
-#include<AardvarkTCP.h>
+//#include<AardvarkTCP.h>
 
 #if PANGO_DEBUG
     std::map<uint8_t,char*> mqttTraits::pktnames={
@@ -34,7 +33,7 @@ mqttTraits::mqttTraits(uint8_t* p,size_t s): data(p),len(s){
 //  CALCULATE RL
     uint32_t multiplier = 1;
     uint8_t encodedByte;//,rl=0;
-    ADFP pp=&data[1];
+    uint8_t* pp=&data[1];
     do{
         encodedByte = *pp++;
         offset++;
@@ -66,12 +65,8 @@ mqttTraits::mqttTraits(uint8_t* p,size_t s): data(p),len(s){
                     qos=(flags & 0x6) >> 1;
                     payload=start();
                     topic=_decodestring(&payload);
-                    PANGO_PRINT1("SANITY TOPIC %s len=%d payload=0x%08x\n",topic.data(),topic.size(),payload);
-                    //
                     if(qos){ id=_peek16(payload);payload+=2; }
                     plen=data+len-payload;
-                    PANGO_PRINT4("SANITY PAYLOAD 0x%08x len=%d id=%d\n",payload,plen,id);
-                    PANGO_DUMP4(payload,plen);
                 }
             }
             break;
@@ -88,17 +83,16 @@ mqttTraits::mqttTraits(uint8_t* p,size_t s): data(p),len(s){
                 PANGO_PRINT3("  Protocol: %s\n",data[8]==4 ? "3.1.1":stringFromInt(data[8],"0x%02x").data());
                 PANGO_PRINT4("  Flags: %02x\n",cf);
                 PANGO_PRINT3("  Session: %s\n",((cf & CLEAN_SESSION) >> 1) ? "Clean":"Dirty");
-                if((cf & WILL) >> 2){
-                    PANGO_PRINT3("  Where there's a will...:)\n");
-                    if((cf & WILL_RETAIN) >> 5) PANGO_PRINT3("  Will: RETAIN\n");
-                    PANGO_PRINT3("  Will QoS: %d)\n",(cf >> 4) &0x3);
+                PANGO_PRINT3("  Keepalive: %d\n",_peek16(&data[10]));
+                uint8_t* sp=&data[12];
+                PANGO_PRINT3("  ClientId: 0x%08x %s\n",sp,_decodestring(&sp).data());
+                if(cf & WILL){
+                    PANGO_PRINT3("  Will Topic: 0x%08x %s\n",sp,_decodestring(&sp).data());
+                    if(cf & WILL_RETAIN) PANGO_PRINT3("  Will: RETAIN\n");
+                    PANGO_PRINT3("  Will QoS: %d\n",(cf >> 3) &0x3);
                 } 
-                if((cf & USERNAME) >> 7){
-                    PANGO_PRINT3("  Where there's a username...:)\n");
-                } 
-                if((cf & PASSWORD) >> 6){
-                    PANGO_PRINT3("  Where there's  password...:)\n");
-                } 
+                if(cf & USERNAME) PANGO_PRINT3("  Username: %s\n",_decodestring(&sp).data());
+                if(cf & PASSWORD) PANGO_PRINT3("  Password: %s\n",_decodestring(&sp).data());
                 break;
             }
         case CONNACK:

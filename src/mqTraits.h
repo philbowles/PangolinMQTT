@@ -1,8 +1,9 @@
 #pragma once
-#include<AardvarkUtils.h>
 
+#include<pmbtools.h>
+#include<pango_config.h>
+#include<pango_common.h>
 #include<map>
-#include<string>
 
 enum :uint8_t {
     CONNECT     = 0x10, // x
@@ -28,13 +29,6 @@ class mqttTraits {
                 
                 string          _decodestring(uint8_t** p);
         inline  uint16_t        _peek16(uint8_t* p){ return (*(p+1))|(*p << 8); }
-/* a step too far
-        inline  uint16_t        X_peek16(uint8_t** p){
-            uint8_t lo=*(*p)++;
-            uint8_t hi=*(*p)++;
-            return (uint16_t) ((lo << 8)|hi);
-        }
-*/
     public:
                 uint8_t*        data;
                 size_t          len;

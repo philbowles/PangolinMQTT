@@ -25,17 +25,7 @@ SOFTWARE.
 #pragma once
 #include <PangolinMQTT.h>
 #include <mqTraits.h>
-/*
-enum PANGO_MQTT_CNX_FLAG : uint8_t {
-    USERNAME      = 0x80,
-    PASSWORD      = 0x40,
-    WILL_RETAIN   = 0x20,
-    WILL_QOS1     = 0x08,
-    WILL_QOS2     = 0x10,
-    WILL          = 0x04,
-    CLEAN_SESSION = 0x02
-};
-*/
+
 using PANGO_BLOCK_Q        = std::queue<mbx>;
 
 class Packet {
@@ -49,26 +39,14 @@ class Packet {
                 uint32_t         _bs=0;
                 PANGO_FN_VOID    _begin=[]{};
                 PANGO_FN_U8PTRU8 _middle=[](uint8_t* p){ return p; };
-                PANGO_FN_U8PTR   _end=[](uint8_t* p,uint8_t* base){};
+                PANGO_FN_U8PTR   _end=[](uint8_t* p,uint8_t* base){}; // lose this?
 
                 void	         _build(bool hold=false);
                 void             _idGarbage(uint16_t id);
                 void             _initId();
                 void             _multiTopic(std::initializer_list<const char*> topix,uint8_t qos=0);
                 uint8_t*         _poke16(uint8_t* p,uint16_t u);
-                void             _shortGarbage();
                 void             _stringblock(const std::string& s);
-        static  void             _txPacket(mbx m){
-            mqttTraits  traits(m.data,m.len);
-            PANGO_PRINT4("TX ----> MBX %s 0x%08x len=%d\n",traits.getPktName().data(),m.data,m.len);
-            PANGOV3->txdata(m); 
-        }
-        /*
-        static  void             _txPacket(mqttTraits m){
-            PANGO_PRINT4("TX ----> TRT %s 0x%08x len=%d\n",m.getPktName().data(),m.data,m.len);
-            PANGOV3->txdata(m); 
-        }
-        */
     public:
         Packet(uint8_t controlcode,bool hasid=false): _controlcode(controlcode),_hasId(hasid){}
 };
@@ -77,15 +55,8 @@ class ConnectPacket: public Packet {
     public:
         ConnectPacket();
 };
-class PingPacket: public Packet {
-    public:
-        PingPacket(): Packet(PINGREQ) { _shortGarbage(); }
-};
-class DisconnectPacket: public Packet {
-    public:
-        DisconnectPacket(): Packet(DISCONNECT) { _shortGarbage(); }
-};
-class PubackPacket: public Packet {
+
+struct PubackPacket: public Packet {
     public:
         PubackPacket(uint16_t id): Packet(PUBACK) { _idGarbage(id); }
 };

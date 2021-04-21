@@ -25,6 +25,7 @@ SOFTWARE.
 #pragma once
 
 #include"pango_config.h"
+#include"pango_common.h"
 
 #include<Arduino.h>
 
@@ -33,21 +34,16 @@ SOFTWARE.
 #include<map>
 #include<queue>
 
-#ifdef ARDUINO_ARCH_ESP32
-    #include <AsyncTCP.h> /// no tls yet
-#else
-    #include <ESPAsyncTCP.h>
+#ifdef ARDUINO_ARCH_ESP8266
     #if ASYNC_TCP_SSL_ENABLED
         #include <tcp_axtls.h>
     #endif
 #endif
 
-const char*_HAL_getUniqueId();
-
 #include<AardvarkTCP.h>
-#include<AardvarkUtils.h>
 
 enum PANGO_FAILURE : uint8_t {
+    AARDVARK_NON_TCP_ERROR = VARK_MAX_ERROR,
     TCP_DISCONNECTED,
     MQTT_SERVER_UNAVAILABLE,
     UNRECOVERABLE_CONNECT_FAIL,
@@ -62,59 +58,9 @@ enum PANGO_FAILURE : uint8_t {
     OUTBOUND_PUB_TOO_BIG,
     BOGUS_PACKET,
     X_INVALID_LENGTH,
-    NO_SERVER_DETAILS
+    NO_SERVER_DETAILS,
+    NOT_ENOUGH_MEMORY
 };
-
-    extern char*            getPktName(uint8_t type);
-
-//#include"PANGO.h" // common namespace
-//  "Pangolin" has what some (uninformed) folk might call "unorthodox" memory management. 
-//  It contains a lot of code that LOOKS like it will leak memory. For those uninformed folk, 
-//  (including the authors of other so-called MQTT libraries): "standard" techniques simply don't work 
-//  with the current implementations of ESPAsyncTCP -> LwIP. 
-//
-//  For performance reasons, LwIP does not copy the data behind any pointer you send it. Since 
-//  ESPAsyncTCP is little more than  a wrapper around LwIP, it simply "forwards" any pointer it
-//  is given. Next you need to understand the TCP "nagle" algoritm but basically LwIP buffers
-//  lots of small sends into a big packet that is worth sending (to reduce overheads), 
-//  before "putting it on the wire" when *IT* decides and the caller has NO CONTROL over when
-//  that happens.
-//
-//  THEREFORE:
-//
-//      WE must hold on to that pointer until LwIP has actually used it, which may be seconds later
-//      and LONG after "standard" techniques have free'd it, incorrectly thinking that it is safe to
-//      do so, since they have "fowarded it on". What they have in fact done is created a "dangling pointer".
-//      
-//      IF when LwIP DOES comes to use it the data it USED TO point to has "gone away" or been re-used 
-//      (highly likely!) then pick your chosen failure mode from any of the following:
-//       * packet data corruption
-//       * mangled protocol control leading to closed connections (giving disconnect / reconnect loops) 
-//       * the MOST fun - random exception crash / reboot loop. 
-//
-//      ALL of which will be painfully all-too-familar to users of other MQTT libraries
-//
-//  SOLUTION:
-//
-//  All packet data pointers most be retained until the packet they relate to has been ACKed by TCP
-//  ===============================================================================================
-//
-//  ADFP A "delayed free" pointer to a malloc'd block that contains the whole actual packet data.
-//  It will NOT get free'd until the TCP ack comes back for it
-//  so anywhere one is used it will LOOK like a memory leak, but IT IS NOT!
-//  
-//  1:1 flow control of packets sent vs packets ACKed is enforced to avoid overlap
-//  and ensure incoming TCP ACK matches the last packet sent
-//  with its id in _uaId (acting together as a kind of singleton PANGO_PACKET_MAP)
-// 
-//  A "message block" wrapper for all "flying" ADFP pointers so we always know their length and have quick
-//  access to important fields e.g. Qos, "remaining length" which would otherwise need to be derived or
-//  recalculated every time
-//
-//  class mq = "message block": Basically a fancy struct: ALWAYS contained by copy, don't ever hold ptr to an mqm
-//
-//using PANGO_DELAYED_FREE   = uint8_t*;
-//using ADFP                 = PANGO_DELAYED_FREE; // SOOO much less typing - PANGO "delayed free" pointer
 
 #include<mbx.h>
 #include<mqTraits.h>
@@ -137,6 +83,7 @@ class PangolinMQTT: public AardvarkTCP {
         friend class Packet;
         friend class ConnectPacket;
         friend class PublishPacket;
+        friend class mqttTraits;
 
                PANGO_cbConnect     _cbConnect=nullptr;
                PANGO_cbDisconnect  _cbDisconnect=nullptr;
@@ -148,8 +95,8 @@ class PangolinMQTT: public AardvarkTCP {
                uint16_t            _keepalive=15 * PANGO_POLL_RATE;
                std::string         _password;
         static PANGO_PACKET_MAP    _inbound;
-        static uint32_t            _nPollTicks;
-        static uint32_t            _nSrvTicks;
+               uint32_t            _nPollTicks;
+               uint32_t            _nSrvTicks;
         static PANGO_PACKET_MAP    _outbound;
                std::string         _username;
                std::string         _willPayload;
@@ -172,17 +119,11 @@ class PangolinMQTT: public AardvarkTCP {
                void                _resendPartialTxns();
     public:
         PangolinMQTT();
-                void               connect(const char* clientId="",bool session=true){ 
-                        _cleanSession = session;
-                        _clientId = clientId;
-                        TCPconnect();
-                }
+                void               connect(std::string clientId="",bool session=true);
                 void               disconnect();
-                const char*        getClientId(){ return _clientId.data(); }
-                size_t inline      getMaxPayloadSize(){ return (_HAL_getFreeHeap() / 2) - PANGO_HEAP_SAFETY; }
-
+                std::string        getClientId(){ return _clientId; }
+                size_t inline      getMaxPayloadSize(){ return _HAL_maxPayloadSize(); }
                 bool               mqttConnected(){ return _connected; }
-
                 void               onMqttConnect(PANGO_cbConnect callback){ _cbConnect=callback; }
                 void               onMqttDisconnect(PANGO_cbDisconnect callback){ _cbDisconnect=callback; }
                 void               onMqttError(PANGO_cbError callback){ _cbError=callback; }

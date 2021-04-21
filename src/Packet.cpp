@@ -28,6 +28,7 @@ SOFTWARE.
 uint16_t                            Packet::_nextId=1000;
 
 void Packet::_build(bool hold){
+//    PANGO_PRINT4("PACKET BUILDER FH=%u\n",ESP.getFreeHeap());
     uint8_t* virgin;
     _begin();
     if(_hasId) _bs+=2;
@@ -41,32 +42,36 @@ void Packet::_build(bool hold){
         if ( X > 0 ) encodedByte = encodedByte | 128;
         rl.push_back(encodedByte);
     } while ( X > 0 );
-
     _bs+=1+rl.size();
-    ADFP snd_buf=virgin=(static_cast<ADFP>(malloc(_bs))); // Not a memleak - will be free'd when TCP ACKs it.
-    
-    *snd_buf++=_controlcode;
-    for(auto const& r:rl) *snd_buf++=r;
-    if(_hasId) snd_buf=_poke16(snd_buf,_id);
-    snd_buf=_middle(snd_buf);
-    while(!_blox.empty()){
-        mbx tmp=_blox.front();
-        uint16_t n=tmp.len;
-        uint8_t* p=tmp.data;
-        snd_buf=_poke16(snd_buf,n);
-        memcpy(snd_buf,p,n);
-        snd_buf+=n;
-        tmp.clear();
-        _blox.pop();
+    uint8_t* snd_buf=virgin=mbx::getMemory(_bs);
+    PANGO_PRINT4("PACKET CREATED @ 0x%08x len=%d\n",snd_buf,_bs);
+    if(snd_buf){
+        *snd_buf++=_controlcode;
+        for(auto const& r:rl) *snd_buf++=r;
+        if(_hasId) snd_buf=_poke16(snd_buf,_id);
+        snd_buf=_middle(snd_buf);
+        while(!_blox.empty()){
+            mbx tmp=_blox.front();
+            uint16_t n=tmp.len;
+            uint8_t* p=tmp.data;
+            snd_buf=_poke16(snd_buf,n);
+            memcpy(snd_buf,p,n);
+            snd_buf+=n;
+            tmp.clear();
+            _blox.pop();
+        }
+        _end(snd_buf,virgin);
+        if(!hold) PANGOV3->txdata(virgin,_bs,false);
+    }  
+    else {
+        PANGOV3->_notify(NOT_ENOUGH_MEMORY,_bs);
+//        VARK_PRINT1("MBX STATUS: FH=%u MXBLK=%u FM=%u\n",ESP.getFreeHeap(),ESP.getMaxFreeBlockSize(),ESP.getHeapFragmentation());
     }
-    _end(snd_buf,virgin);
-    PANGO_DUMP4(virgin,_bs);
-    if(!hold) _txPacket(mbx(virgin,_bs,true));
 }
 
 void Packet::_idGarbage(uint16_t id){
     uint8_t  G[]={_controlcode,2,(id & 0xff00) >> 8,id & 0xff};
-    _txPacket(mbx(G,4,true));
+    PANGOV3->txdata(&G[0],4,true);
 }
 
 void Packet::_multiTopic(std::initializer_list<const char*> topix,uint8_t qos){
@@ -97,11 +102,6 @@ uint8_t* Packet::_poke16(uint8_t* p,uint16_t u){
     *p++=(u & 0xff00) >> 8;
     *p++=u & 0xff;
     return p;
-}
-
-void Packet::_shortGarbage(){
-    uint8_t  G[]={_controlcode,0};
-    _txPacket(mbx(G,2,true));
 }
 
 void Packet::_stringblock(const std::string& s){ 
@@ -155,15 +155,17 @@ PublishPacket::PublishPacket(const char* topic, uint8_t qos, bool retain, const 
                 _controlcode|=flags;
             };
 
-            _end=[this,payload](uint8_t* p,uint8_t* base){ 
+            _end=[=](uint8_t* p,uint8_t* base){ 
                 uint8_t* p2=_qos ? _poke16(p,_id):p;
                 memcpy(p2,payload,_length);
-//                dumphex(base,_bs);
                 mqttTraits T(base,_bs);
                 if(_givenId) PangolinMQTT::_inbound[_id]=T;
                 else if(_qos) PangolinMQTT::_outbound[_id]=T;
-                
             };
             _build(_givenId);
-        } else PANGOV3->_notify(OUTBOUND_PUB_TOO_BIG,length);
+        } 
+        else {
+            PANGOV3->_notify(_givenId ? INBOUND_PUB_TOO_BIG:OUTBOUND_PUB_TOO_BIG,length);
+//            VARK_PRINT1("MBX STATUS: FH=%u MXBLK=%u FM=%u\n",ESP.getFreeHeap(),ESP.getMaxFreeBlockSize(),ESP.getHeapFragmentation());
+        }
 }
