@@ -1,13 +1,14 @@
 ![mbm](assets/pangoplain.jpg)
 
-# ArduinoIDE MQTT client library for ESP8266, ESP32
+# Asynchronous ArduinoIDE MQTT 3.1.1 client library for ESP8266, ESP32
 
-###### Version 2.0.0 [Release Notes](docs/rn200.md)
+###### Version 3.0.0 [Release Notes](docs/rn300.md)
 
 * [Features](#features)
 * [Performance](#performance)
 * [Unique features](#features-you-may-not-find-in-other-libraries)
-* [Installation](#installation)
+* [PangolinMQTT's place in "The Menagerie"](#the-menagerie-roadmap)
+* [Installation path](#pangolinmqtt-installation-path)
 * [Issues / Support](#issues--support)
 * [IMPORTANT NOTE FOR PLATFORMIO USERS](#important-note-for-platformio-users)
 
@@ -25,7 +26,7 @@
  * Full* MQTT v3.1.1 Qos0/1/2 compliance, session management and recovery
  * Payload size limited only by available heap (~20kB on ESP8266, ~120kb on ESP32)
  * TLS support (ESP8266 only)
- * Compile time multilevel diagnostic
+ * Compile-time multilevel diagnostic
  * Utility functions to view binary payloads and handle as:
    * C-style string (`char*`)
    * `std::string`
@@ -46,14 +47,11 @@
 
 ---
 
-
----
-
 # Features you may not find in other libraries:
 
 ## Large Payloads
 
-Pangolin automatically fragments outbound packets and reassembles inbound packets of any size up to about 1/2 the free heap. User code simply gets a copy of the full packet - irrespective of its size - without any fuss and requiring *zero* code on the user's part.
+PangolinMQTT automatically fragments outbound packets and reassembles inbound packets of any size up to about 1/2 the free heap. User code simply gets a copy of the full packet - irrespective of its size - without any fuss and requiring *zero* code on the user's part.
 
 ## Full QoS1 / QoS2 compatibility / recovery
 
@@ -65,20 +63,34 @@ They *may* sometimes work, e.g. with only small packets and/or slow send rates b
 
 Then it ***does not support QoS1/2*** no matter what claims it may make.
 
-Pangolin has been tested to be QoS1/2 compatible and contains 2 [example sketches](examples/SessionRecovery1/SessionRecovery1.ino) to demonstrate this feature.
-
+---
 ---
 
-# Installation
+# The "menagerie" roadmap
 
-Pangolin depends upon [ESPAsyncTCP](https://github.com/me-no-dev/ESPAsyncTCP) (for ESP8266 targets) or [AsyncTCP](https://github.com/me-no-dev/AsyncTCP) for ESP32 targets.
+PangolinMQTT is one of a family of firmware packages for simple *robust* and rapid ***asynchronous*** IOT development on ESP8266 / ESP32
 
-You will need to install one or both of those before using Pangolin.
+![roadmap](assets/common/menagerieroadmap.jpg)
 
-HOWEVER: [ESPAsyncTCP](https://github.com/me-no-dev/ESPAsyncTCP) ***contains a serious bug which prevents it compiling with SSL when using TLS secure connections***. 
+## The related / dependent libraries
 
-PangolinMQTT's author has provided a bugfix version of the above library, see [Using TLS](docs/tls.md) for additional information
+|| Name | Provides | Notes |
+| :---: | :----------  | :--- | :--- |
+||[Forked AsyncTCP](https://github.com/philbowles/AsyncTCP-master)|"Glue" to LwIP (ESP8266)| Important bugfixes |
+||[Forked ESPAsyncTCP](https://github.com/philbowles/ESPAsyncTCP-master)|"Glue" to LwIP(ESP32)| Missing features added |
+||[Forked ESPAsyncWebserver](https://github.com/philbowles/ESPAsyncWebServer)| Basis of webUI in H4Plugins| Several major bugfixes |
+|![roadmap](assets/common/tools_icon.jpg)|[PMB Tools](https://github.com/philbowles/pmbtools)|'32/'8266 HAL and utility functions| |
+|![roadmap](assets/common/aardvark_icon.jpg)|[AardvarkTCP](https://github.com/philbowles/AardvarkTCP)|Simple Large-payload Async TCP| API-compatible with ESPAsyncTCP, seamless TLS/SSL |
+|![roadmap](assets/common/pangolin_icon.jpg)|[PangolinMQTT](https://github.com/philbowles/PangolinMQTT)|Async MQTT Client|QoS 0/1/2 Fully 3.1.1 compliant. Large payloads |
+|![roadmap](assets/common/armadillo_icon.jpg)|[ArmadilloHTTP](https://github.com/philbowles/ArmadilloHTTP)|Async HTTP/S Client| Simple send/callback of large payloads |
+|![roadmap](assets/common/h4_icon.jpg)|[H4](https://github.com/philbowles/H4)|Scheduler/Async Timers| |
+|![roadmap](assets/common/h4p_icon.jpg)|[H4/Plugins](https://github.com/philbowles/h4plugins)|Full Async IOT Firmware| Webserver, MQTT, OTA, NTP, HTTP etc etc |
 
+## PangolinMQTT installation path
+
+![pango path](assets/roadmapPangolin.jpg)
+
+---
 ## Compiling
 
 ![performance](assets/lwip.jpg)
@@ -104,6 +116,8 @@ If you want a rapid response, I am daily moderating those FB groups, including a
 If you do not provide sufficient information for me to be able to replicate the problem, ***I CANNOT FIX IT***
 
 So, always provide: the MCU/board type, a good description of the problem, how / when / why it happens and how to recreate it, as well as the full source code, relevant Serial output messages and a DECODED stack trace in the event of a crash.
+
+---
 
 ## And finally...
 

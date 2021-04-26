@@ -9,7 +9,7 @@
 
 An MQTT payload consists of an arbitrary block of data and its length.
 
-The ***ONLY*** correct data type for the data on ESP8266 / ESP32 / STM32 is `uint8_t` (or `byte`) and thus the correct type for a pointer to that data is  `uint8_t*`.
+The ***ONLY*** correct data type for the data on ESP8266 / ESP32 is `uint8_t` (or `byte`) and thus the correct type for a pointer to that data is  `uint8_t*`.
 
 Given that PangolinMQTT allows for much bigger payloads than most other libraries (up to 0.5* the amount of the free heap) its defintion is `size_t`.
 
@@ -43,7 +43,7 @@ mqttClient.publish("my/topic/subtopic",some_data_pointer, some_data_length);
 ...
 ```
 
-For differing payloads, the length calcualtion ***must*** be correctly performed and the memory allocated prior to every call - and usually freed after it. This is both time-consuming and error-prone, hence the `xPublish` variants exist to do this routine work for you correctly in all cases depending on the type of data being sent.
+For differing payloads, the length calculation ***must*** be correctly performed and the memory allocated prior to every call - and usually freed after it. This is both time-consuming and error-prone, hence the `xPublish` variants exist to do this routine work for you correctly in all cases depending on the type of data being sent.
 
 ---
 
@@ -63,7 +63,9 @@ mqttClient.publish("mytopic/integer",myvalue,"0x%08X"); // publishes "0x0001E240
 
 # Received payloads
 
-First, remind yourself that an MQTT payload consists of an arbitrary block of data and a length. The MQTT specification has ***nothing*** to say about what that data represents. Only the programmer / system that placed the data and its correct length in the message actually "knows" what the data ***should*** "look" like. Did the sender publish a printable string? A JSON-formatted printable string? A 32-bit (4 byte) binary value? Who knows? *Only the sender*.
+First, remind yourself that an MQTT payload consists of an arbitrary block of data and a length. ***IT IS NOT A "STRING" OF ANY KIND!***.
+
+The MQTT specification has ***nothing*** to say about what that data represents. Only the programmer / system that placed the data and its correct length in the message actually "knows" what the data ***should*** "look" like. Did the sender publish a printable string? A JSON-formatted printable string? A 32-bit (4 byte) binary value? Who knows? *Only the sender*.
 
 Thus there can be no escape from the fact that it is *up to the user* to "unpack" the payload and "reconstruct" the data that he/she *thinks* it represents. In a perfect world, it will always look as expected and be within acceptable range / bounds / length of what is expected. In our imperfect world, any programmer relying on the previous assumption has just created a massive bug. Don't let that programmer be *you*.
 
@@ -85,11 +87,11 @@ Let that sink in for a moment. In the vast majority of cases, users will send "s
 
 The correct way to "unpack" a payload then is:
 
-1   Validate that it contains a sensible length for the expected data type else reject and skip all remaining steps
-2   Allocate (or have previously statically declared) a buffer of the correct length
-3   Copy <length> bytes of data from the payload to your own buffer
-4   use the data
-5   Free the buffer (if previously allocated dynamically)
+1. Validate that it contains a sensible length for the expected data type else reject and skip all remaining steps
+2. Allocate (or have previously statically declared) a buffer of the correct length
+3. Copy <length> bytes of data from the payload to your own buffer
+4. use the data
+5. Free the buffer (if previously allocated dynamically)
 
 Skipping any of these steps ***will*** create a potential bug. Whether that bug actually bites you is a matter of luck. Let's look at some examples.
 
@@ -113,17 +115,17 @@ Now let's ramp up the volume and publish "1234567890" at you. You will now write
 
 ### Example 2 - potential errors: dynamic buffer
 
-Your app expects to receive someone's name in topic "name". It can be up to 256 bytes long. To avoid holding on to an expensively large buffer, you allocate it dynamically each time. You want to treat it as a string.
+Your app expects to receive someone's name in topic "name". It can be up to 255 bytes long. To avoid holding on to an expensively large buffer, you allocate it dynamically each time. You want to treat it as a string.
 
 ```cpp
-uint8_t* buf=malloc(length+1); // C-strings are NUL terminated!!! MQTT payloads are not!
+uint8_t* buf=malloc(256); // = len + 1: C-strings are NUL terminated!!! MQTT payloads are not!
 memcpy(buf,payload,length);
 buf[length]=\0; // poke in the terminating NUL to make buf LOOK LIKE a C-string
 printf("Name is %s\n",static_cast<char*>(&tmp[0])); // coerce buf to correct type to treat as C-string
 free(buf); // memory leak if you forget this
 ```
 
-Better? No, it has the same problem as above: If I publish a 300-byte string to "name" your code will crash.
+Better? No, it has the same problem as above: If I publish a 300-byte string to "name" your code will crash. If you cahnge the `memcpy` to use 255, you will arbitraily truncate the input message...
 
 Also, if you forget the +1 or adding the final \0 then you *may not* have a properly terminated string and again your code will probably crash. The worst problem with this code is that you *accidentally* may get what *looks like* a valid string. You *may* be handling corrupt data, or your code *may* work or it may crash, apparently randomly, since each different length message will behave differently. Try debugging *that*.
 
@@ -131,13 +133,13 @@ Finally, if you forget the `free(buf);` call you will eventually run out of memo
 
 ### Example 3 - potential errors: directly using the payload pointer
 
-All of this sound like and unnecessarily complex process: you "know" the payload is a string so you are just going to use the payload pointer, like this:
+All of this sound like an unnecessarily complex process: you "know" the payload is a string so you are just going to use the payload pointer, like this:
 
 ```cpp
 printf("Name is %s\n",static_cast<char*>(&payload[0])); // coerce buf to correct type to treat as C-string
 ```
 
-This is probably *THE* most common payload handling error / potential bug. In many cases, but ***purely by chance*** the library's internal buffer *could be* followed by a NUL byte (\0) in which case your code will work as expected. On the occasions when it is NOT followed by chance by a \0, (*possibly totally random*) you will get a) unexpected results or b) a crash, both of which will be very difficult - if not impossible - to replicate and/or debug.
+This is probably *THE* most common payload handling error / potential bug. In many cases, but ***purely by chance*** the library's internal buffer *could be* followed by a NUL byte (\0) in which case your code will work as expected. On the occasions when it is NOT followed ***by chance*** by a \0, (*possibly totally random*) you will get a) unexpected results or b) a crash, both of which will be very difficult - if not impossible - to replicate and/or debug.
 
 ***NEVER ASSUME THE PAYLOAD IS A VALID C-STYLE STRING!!!***
 
@@ -155,9 +157,9 @@ While some simple validation / rejection can be done by the  `xPayload` calls, *
 
 In summary: 
 
-1 ***DO NOT MIX AND MATCH 'x' CALLS WITH STANDARD publish***
-2 ***ALWAYS USE MATCHING 'xPublish' and 'xPayload' CALLS***
-3 ***If you don't "get" all of this, stick to simple publish and do your own length calcualtions and unpacking***
+1. ***DO NOT MIX AND MATCH 'x' CALLS WITH STANDARD publish***
+2.  ***ALWAYS USE MATCHING 'xPublish' and 'xPayload' CALLS***
+3.  ***If you don't "get" all of this, stick to simple publish and do your own length calculations and unpacking*** (and good luck with it :) )
 
 ---
 
@@ -230,8 +232,6 @@ std::string ss;
 mqttClient.xPayload(&payload[0],payload_length,ss); // unpacks <payload_length> bytes and constructs std::string containing those bytes.
 
 ```
-
-See the [ExpertFunctions example](../examples/ExpertFunctions/ExpertFunctions.ino) for a working sketch using both `xPublish` and `xPayload`
 
 ---
 

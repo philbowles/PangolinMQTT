@@ -1,7 +1,18 @@
 ![plainhdr](../assets/pangoplain.jpg)
 
-# Callbacks
+# Main API Contents
 
+* [Callbacks](#callbacks)
+* [API](#api)
+    * [URL Definition](#url-defintion)
+    * [Using TLS](#using-tls)
+    * ["Pre-flighting" and phases](#pre-flighting-and-phases)
+    * [Response Handling](#respsonse-handling)
+    * [Functions](#functions)
+* [Advanced Topics](#advanced-topics)
+
+---
+# Callbacks
 
 ```cpp
 // M A N D A T O R Y ! ! !
@@ -19,6 +30,9 @@ TCP_DISCONNECTED, // usually because your program structure is wrong, e.g. you c
 MQTT_SERVER_UNAVAILABLE, // usually when server crashes or times out
 UNRECOVERABLE_CONNECT_FAIL, // usually your credentials are incorrect
 TLS_BAD_FINGERPRINT, // SHA1 does not match server certificate's fingerprint
+TLS_NO_FINGERPRINT, // HTTPS selected and no SHA1 fingerprint given
+TLS_NO_SSL, // TLS is not compiled in see docs "using TLS"
+TLS_UNWANTED_FINGERPRINT, // fp supplied when http insecure url given
 SUBSCRIBE_FAIL, // invalid topic provided
 INBOUND_QOS_ACK_FAIL, // an ID has been provided by the server that is no longer held by us (usually after crash/reboot with open session)
 OUTBOUND_QOS_ACK_FAIL,// an ID has been provided by the server that is no longer held by us (usually after crash/reboot with open session)
@@ -27,41 +41,73 @@ OUTBOUND_PUB_TOO_BIG, // you tried to send out a a waaaaaay too big message
 BOGUS_PACKET, // should never happen - server sent malformed / unrecognised packet - SERIOUS PROBLEM
 X_INVALID_LENGTH // length of payload does not match expected data type in x functions - server sent malformed message - SERIOUS PROBLEM
 NO_SERVER_DETAILS // very silly if you let this happen - call setServer before connect!!!
+NOT_ENOUGH_MEMORY
 */
-
 ```
 
 ---
 
 # API
 
-```cpp
-void connect();
-void disconnect(bool force = false);
+## URL defintion
 
-const char* getClientId();
+The url must be specified in the following general form. The extended path and query portions are optional, as is the port. If the port is omitted it will default to 80 for URLs starting `http` and 443 for those starting `https`
+
+`http://hostname:port/path/to/resource?a=b&c=d"`
+
+or
+
+`https://hostname:port/path/to/resource?a=b&c=d"`
+
+The `hostname` portion my be specified as a "dotted quad" IP address e.g. "172.103.22.14" or a publicly resolvable DNS name e.g. `somehost.co.uk`
+
+ESP8266 targets will happily resolve `.local` names. See "Known Issues" re ESP32
+
+### Valid examples
+
+* `http://192.168.1.15` // defaults to port 80
+* `https://myremotehost.com/api?userid=123456` // default to port 443
+* `https://mosquitto.local:8883` // .local only works on ESP8266 at the moment
+* `http://insecure.remote.ru:12345/long/resource/path/?data=123&moredata=456`
+
+## Using TLS
+
+TLS is only currently only available on ESP8266 targets. The first step to using TLS is to edit the [`async_config.h`](https://github.com/philbowles/ESPAsyncTCP-master/blob/master/src/async_config.h) file in [Forked AsyncTCP](https://github.com/philbowles/AsyncTCP-master/scr) and change `#define ASYNC_TCP_SSL_ENABLED 0` to `#define ASYNC_TCP_SSL_ENABLED 1`
+
+Note that this will significantly increase the size of the compiled app. Unless you absolutely need it, do not compile in TLS!
+
+Note also that the version of TLS that ships with ESPAsyncTCP is very weak and there are many sites that will refuse to connect as they require stronger ciphers or client certificates etc.
+
+![tls](../assets/common/tls.jpg)
+
+## Functions
+
+```cpp
+void connect(std::string clientId="",bool session=true); // CHANGED IN V3
+void disconnect(); // CHANGED IN V3
+
+std::string getClientId(); // CHANGED IN V3
 size_t getMaxPayloadSize();
 
-void onConnect(PANGO_cbConnect callback); // mandatory: set connect handler
-void onDisconnect(PANGO_cbDisconnect callback);// optional: set disconnect handler
-void onError(PANGO_cbError callback);// optional: set error handler
-void onMessage(PANGO_cbMessage callback); // // mandatory if subscribing: set topic handler
+bool mqttConnected(); // true when MQTT server up
+void onMqttConnect(PANGO_cbConnect callback); // mandatory: set connect handler V3: REPLACES onConnect
+void onMqttDisconnect(PANGO_cbDisconnect callback);// optional: set disconnect handler V3: REPLACES onDisconnect
+void onMqttError(PANGO_cbError callback);// optional: set error handler  V3: REPLACES onError
+void onMqttMessage(PANGO_cbMessage callback); // // mandatory if subscribing: set topic handler  V3: REPLACES onMessage
 
 void publish(const char* topic,const uint8_t* payload, size_t length, uint8_t qos=0,  bool retain=false);
 void publish(const char* topic,const char* payload, size_t length, uint8_t qos=0,  bool retain=false);
 template<typename T>
 void publish(const char* topic,T v,const char* fmt="%d",uint8_t qos=0,bool retain=false);
 
-void serverFingerprint(const uint8_t* fingerprint); // only if using TLS
-void setCleanSession(bool cleanSession); // optional, default is clean session
-void setClientId(const char* clientId); // optional if you want to control your own device name
-void setCredentials(const char* username, const char* password = nullptr); // optional if your server requires them
 void setKeepAlive(uint16_t keepAlive); // probably best left alone... note actual rate is PANGO_POLL_RATE * keepAlive; and depends on your LwIP
-void setServer(const char* host, uint16_t port);
+void setServer(const char* url,const char* username="", const char* password = "",const uint8_t* fingerprint=nullptr); // V3: CHANGED
 void setWill(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr); // optional
 
 void subscribe(const char* topic, uint8_t qos);
+void subscribe(std::initializer_list<const char*> topix, uint8_t qos); // V3: NEW
 void unsubscribe(const char* topic);
+void unsubscribe(std::initializer_list<const char*> topix); // V3: NEW
 
 void xPublish(const char* topic,const char* value, uint8_t qos=0,  bool retain=false);
 void xPublish(const char* topic,String value, uint8_t qos=0,  bool retain=false);

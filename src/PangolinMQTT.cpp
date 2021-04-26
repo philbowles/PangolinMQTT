@@ -92,7 +92,7 @@ void PangolinMQTT::_hpDespatch(mqttTraits P){
             PANGO_PRINT1("PANGO INTERCEPTED\n");
             string pl((const char*) P.payload,P.plen);
             if(pl=="mem"){
-                Serial.printf("FH: %u\nMB: %u\nFR: %u\nMP: %d\n",ESP.getFreeHeap(),_HAL_maxHeapBlock(),ESP.getHeapFragmentation(),getMaxPayloadSize());
+                Serial.printf("FH: %u\nMB: %u\nMP: %d\n",_HAL_freeHeap(),_HAL_maxHeapBlock(),getMaxPayloadSize());
             } 
             else if(pl=="info"){ 
                 Serial.printf("AARD  Vn: %s\n",AARDVARK_VERSION);
