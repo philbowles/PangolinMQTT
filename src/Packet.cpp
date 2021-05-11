@@ -28,7 +28,6 @@ SOFTWARE.
 uint16_t                            Packet::_nextId=1000;
 
 void Packet::_build(bool hold){
-//    PANGO_PRINT4("PACKET BUILDER FH=%u\n",ESP.getFreeHeap());
     uint8_t* virgin;
     _begin();
     if(_hasId) _bs+=2;
@@ -63,10 +62,7 @@ void Packet::_build(bool hold){
         _end(snd_buf,virgin);
         if(!hold) PANGOV3->txdata(virgin,_bs,false);
     }  
-    else {
-        PANGOV3->_notify(NOT_ENOUGH_MEMORY,_bs);
-//        VARK_PRINT1("MBX STATUS: FH=%u MXBLK=%u FM=%u\n",ESP.getFreeHeap(),ESP.getMaxFreeBlockSize(),ESP.getHeapFragmentation());
-    }
+    else PANGOV3->_notify(NOT_ENOUGH_MEMORY,_bs);
 }
 
 void Packet::_idGarbage(uint16_t id){
@@ -163,9 +159,5 @@ PublishPacket::PublishPacket(const char* topic, uint8_t qos, bool retain, const 
                 else if(_qos) PangolinMQTT::_outbound[_id]=T;
             };
             _build(_givenId);
-        } 
-        else {
-            PANGOV3->_notify(_givenId ? INBOUND_PUB_TOO_BIG:OUTBOUND_PUB_TOO_BIG,length);
-//            VARK_PRINT1("MBX STATUS: FH=%u MXBLK=%u FM=%u\n",ESP.getFreeHeap(),ESP.getMaxFreeBlockSize(),ESP.getHeapFragmentation());
-        }
+        } else PANGOV3->_notify(_givenId ? INBOUND_PUB_TOO_BIG:OUTBOUND_PUB_TOO_BIG,length);
 }

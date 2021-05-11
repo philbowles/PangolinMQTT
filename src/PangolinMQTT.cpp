@@ -41,11 +41,7 @@ PangolinMQTT::PangolinMQTT(): AardvarkTCP(){
         if(error < 1){
             PANGO_PRINT1("TCP_ERROR %d info=%d FORCE DISCONNECT\n",error,info); 
             disconnect();
-        }
-        else {
-            PANGO_PRINT1("AARDVARK_ERROR %d info=%d\n",error,info);
-            _notify(AARDVARK_NON_TCP_ERROR,error);
-        } 
+        } else _notify(AARDVARK_NON_TCP_ERROR,error);
     });
     onTCPpoll([=]{ _onPoll(); });
 
@@ -58,11 +54,12 @@ void PangolinMQTT::setServer(const char* url,const char* username, const char* p
     TCPurl(url,fingerprint);
 }
 
-void PangolinMQTT::setWill(const char* topic, uint8_t qos, bool retain, const char* payload) {
-  _willTopic = topic;
-  _willQos = qos;
-  _willRetain = retain;
-  _willPayload = payload;
+void PangolinMQTT::setWill(const string& topic, uint8_t qos, bool retain, const string& payload) {
+//    Serial.printf("SETWILL 0 %s %d %d %s\n",topic.data(),qos,retain,payload.data());
+    _willTopic = topic;
+    _willQos = qos;
+    _willRetain = retain;
+    _willPayload = payload;
 }
 
 void PangolinMQTT::_ACK(PANGO_PACKET_MAP* m,uint16_t id,bool inout){ /// refakta?
@@ -252,7 +249,7 @@ void PangolinMQTT::_resendPartialTxns(){
 //
 void PangolinMQTT::connect(std::string clientId,bool session){ 
     _cleanSession = session;
-    _clientId = clientId.size() ? clientId:_HAL_uniqueName();
+    _clientId = clientId.size() ? clientId:_HAL_uniqueName("PANGO"PANGO_VERSION);
     TCPconnect();
 }
 

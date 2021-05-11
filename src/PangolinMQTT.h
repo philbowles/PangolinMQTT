@@ -176,7 +176,7 @@ class PangolinMQTT: public AardvarkTCP {
                 }
                 void               setKeepAlive(uint16_t keepAlive){ _keepalive = PANGO_POLL_RATE * keepAlive; }
                 void               setServer(const char* url,const char* username="", const char* password = "",const uint8_t* fingerprint=nullptr);
-                void               setWill(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr);
+                void               setWill(const string& topic, uint8_t qos, bool retain, const string& payload = nullptr);
                 void               subscribe(const char* topic, uint8_t qos=0);
                 void               subscribe(std::initializer_list<const char*> topix, uint8_t qos=0);
                 void               unsubscribe(const char* topic);
