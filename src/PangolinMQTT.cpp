@@ -247,9 +247,10 @@ void PangolinMQTT::_resendPartialTxns(){
 //
 //      PUBLIC
 //
-void PangolinMQTT::connect(std::string clientId,bool session){ 
+void PangolinMQTT::connect(std::string client,bool session){ 
+    Serial.printf("PangolinMQTT::connect %s\n",client.data());
     _cleanSession = session;
-    _clientId = clientId.size() ? clientId:_HAL_uniqueName("PANGO"PANGO_VERSION);
+    _clientId = client.size() ? client:_HAL_uniqueName("PANGO"PANGO_VERSION);
     TCPconnect();
 }
 
