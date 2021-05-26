@@ -85,6 +85,7 @@ void PangolinMQTT::_clearQQ(PANGO_PACKET_MAP* m){
 
 void PangolinMQTT::_hpDespatch(mqttTraits P){ 
     if(_cbMessage) {
+#if PANGO_DEBUG
         if(P.topic=="pango"){
             PANGO_PRINT1("PANGO INTERCEPTED\n");
             string pl((const char*) P.payload,P.plen);
@@ -105,11 +106,12 @@ void PangolinMQTT::_hpDespatch(mqttTraits P){
                 Serial.printf("poll Tix: %d\n",_nPollTicks);
                 Serial.printf("srv  Tix: %d\n",_nSrvTicks);
             }
-#if PANGO_DEBUG
             else if(pl=="dump"){ dump(); }
-#endif
         }
-    else _cbMessage(P.topic.data(), P.payload, P.plen, P.qos, P.retain, P.dup);
+
+        else
+#endif
+        _cbMessage(P.topic.data(), P.payload, P.plen, P.qos, P.retain, P.dup);
     }
 }
 
@@ -248,7 +250,6 @@ void PangolinMQTT::_resendPartialTxns(){
 //      PUBLIC
 //
 void PangolinMQTT::connect(std::string client,bool session){ 
-    Serial.printf("PangolinMQTT::connect %s\n",client.data());
     _cleanSession = session;
     _clientId = client.size() ? client:_HAL_uniqueName("PANGO"PANGO_VERSION);
     TCPconnect();
