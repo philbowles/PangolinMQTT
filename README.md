@@ -3,7 +3,7 @@
 # Asynchronous ArduinoIDE MQTT 3.1.1 client library for ESP8266, ESP32
 
 ---
-###### Version 3.0.0 [Release Notes](docs/rn300.md)
+###### Version 3.0.1 [Release Notes](docs/rn300.md)
 
 * [Features](#features)
 * [Performance](#performance)
