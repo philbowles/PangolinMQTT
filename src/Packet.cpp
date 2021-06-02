@@ -71,7 +71,7 @@ void Packet::_idGarbage(uint16_t id){
 }
 
 void Packet::_multiTopic(std::initializer_list<const char*> topix,uint8_t qos){
-    static vector<string> topics;
+    static std::vector<std::string> topics;
     _id=++_nextId;
     _begin=[=]{
         for(auto &t:topix){

@@ -27,7 +27,7 @@ class mqttTraits {
                 uint8_t         offset=0;
                 uint8_t         flags=0;
                 
-                string          _decodestring(uint8_t** p);
+                std::string     _decodestring(uint8_t** p);
         inline  uint16_t        _peek16(uint8_t* p){ return (*(p+1))|(*p << 8); }
     public:
                 uint8_t*        data;
@@ -37,7 +37,7 @@ class mqttTraits {
                 uint8_t         qos=0;
                 bool            dup;
                 bool            retain;
-                string          topic;
+                std::string     topic;
                 uint8_t*        payload;
                 size_t          plen;
                 bool            pubrec;

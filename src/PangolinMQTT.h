@@ -128,7 +128,6 @@ class PangolinMQTT: public AardvarkTCP {
                 void               onMqttDisconnect(PANGO_cbDisconnect callback){ _cbDisconnect=callback; }
                 void               onMqttError(PANGO_cbError callback){ _cbError=callback; }
                 void               onMqttMessage(PANGO_cbMessage callback){ _cbMessage=callback; }
-                
                 void               publish(const char* topic,const uint8_t* payload, size_t length, uint8_t qos=0,  bool retain=false);
                 void               publish(const char* topic,const char* payload, size_t length, uint8_t qos=0,  bool retain=false);
                 template<typename T>
@@ -176,7 +175,7 @@ class PangolinMQTT: public AardvarkTCP {
                 }
                 void               setKeepAlive(uint16_t keepAlive){ _keepalive = PANGO_POLL_RATE * keepAlive; }
                 void               setServer(const char* url,const char* username="", const char* password = "",const uint8_t* fingerprint=nullptr);
-                void               setWill(const string& topic, uint8_t qos, bool retain, const string& payload = nullptr);
+                void               setWill(const std::string& topic, uint8_t qos, bool retain, const std::string& payload = nullptr);
                 void               subscribe(const char* topic, uint8_t qos=0);
                 void               subscribe(std::initializer_list<const char*> topix, uint8_t qos=0);
                 void               unsubscribe(const char* topic);

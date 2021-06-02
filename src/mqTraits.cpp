@@ -1,5 +1,4 @@
 #include<mqTraits.h>
-//#include<AardvarkTCP.h>
 
 #if PANGO_DEBUG
     std::map<uint8_t,char*> mqttTraits::pktnames={
@@ -20,9 +19,9 @@
     };
 #endif
 
-string mqttTraits::_decodestring(uint8_t** p){
+std::string mqttTraits::_decodestring(uint8_t** p){
     size_t tlen=_peek16(*p);//payload+=2;
-    string rv((const char*) *(p)+2,tlen);
+    std::string rv((const char*) *(p)+2,tlen);
     *p+=2+tlen;
     return rv;
 }
@@ -31,6 +30,7 @@ mqttTraits::mqttTraits(uint8_t* p,size_t s): data(p),len(s){
     type=data[0];
     flags=(data[0] & 0xf);
 //  CALCULATE RL
+//  DO "HAMZA'S" FIX
     uint32_t multiplier = 1;
     uint8_t encodedByte;//,rl=0;
     uint8_t* pp=&data[1];

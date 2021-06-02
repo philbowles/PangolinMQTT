@@ -54,8 +54,7 @@ void PangolinMQTT::setServer(const char* url,const char* username, const char* p
     TCPurl(url,fingerprint);
 }
 
-void PangolinMQTT::setWill(const string& topic, uint8_t qos, bool retain, const string& payload) {
-//    Serial.printf("SETWILL 0 %s %d %d %s\n",topic.data(),qos,retain,payload.data());
+void PangolinMQTT::setWill(const std::string& topic, uint8_t qos, bool retain, const std::string& payload) {
     _willTopic = topic;
     _willQos = qos;
     _willRetain = retain;
@@ -119,7 +118,10 @@ void PangolinMQTT::_hpDespatch(uint16_t id){ _hpDespatch(_inbound[id]); }
 
 void PangolinMQTT::_handlePacket(uint8_t* data, size_t len){
     _nSrvTicks=0;
-    if(data[0]==PINGRESP || data[0]==UNSUBACK) return; // early bath
+    if(data[0]==PINGRESP || data[0]==UNSUBACK){
+        PANGO_PRINT1("T=%d %s\n",millis(),mqttTraits::pktnames[data[0]]);
+        return; // early bath
+    }
 
     mqttTraits traits(data,len);
     auto i=traits.start();
@@ -134,9 +136,9 @@ void PangolinMQTT::_handlePacket(uint8_t* data, size_t len){
                 _resendPartialTxns();
                 _nPollTicks=_nSrvTicks=0;
                 PANGO_PRINT1("CONNECTED FH=%u MaxPL=%u SESSION %s\n",_HAL_maxHeapBlock(),getMaxPayloadSize(),session ? "DIRTY":"CLEAN");
-//#if PANGO_DEBUG
+#if PANGO_DEBUG
                 SubscribePacket pango("pango",0); // internal info during beta...will be moved back inside debug #ifdef
-//#endif
+#endif
                 if(_cbConnect) _cbConnect(session);
             }
             break;
@@ -216,6 +218,7 @@ void PangolinMQTT::_onPoll() {
         else {
             if(_nPollTicks > _keepalive){
 //                _resendPartialTxns();
+                PANGO_PRINT1("T=%d PINGREQ\n",millis());
                 txdata(G,2,false); // static ping
                 _nPollTicks=0;
             }
@@ -245,7 +248,6 @@ void PangolinMQTT::_resendPartialTxns(){
     }
     for(auto const& i:morituri) _ACKoutbound(i);
 }
-
 //
 //      PUBLIC
 //
@@ -295,8 +297,9 @@ void PangolinMQTT::unsubscribe(std::initializer_list<const char*> topix) {
 //
 #if PANGO_DEBUG
 void PangolinMQTT::dump(){
+#if VARK_DEBUG
     AardvarkTCP::dump();
-
+#endif
     PANGO_PRINT4("DUMP ALL %d PACKETS OUTBOUND\n",_outbound.size());
     for(auto & p:_outbound) p.second.dump();
 
